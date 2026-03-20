@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mad_asgm/models/water_intake_model.dart';
 import 'package:mad_asgm/views/water_intake_edit_page.dart';
 import 'package:mad_asgm/views/water_intake_page.dart';
-import '../controllers/database_service.dart';
-import 'models/heart_rate_model.dart';
-import 'models/weight_model.dart';
+import '../../controllers/database_service.dart';
+import '../models/heart_rate_model.dart';
+import '../models/weight_model.dart';
 
 class HealthMonitorPage extends StatefulWidget {
   const HealthMonitorPage({super.key});
