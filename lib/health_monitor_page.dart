@@ -1,7 +1,10 @@
-
 import 'package:flutter/material.dart';
-import 'database_service.dart';
-import 'models/health_record_model.dart';
+import 'package:mad_asgm/models/water_intake_model.dart';
+import 'package:mad_asgm/views/water_intake_edit_page.dart';
+import 'package:mad_asgm/views/water_intake_page.dart';
+import '../controllers/database_service.dart';
+import 'models/heart_rate_model.dart';
+import 'models/weight_model.dart';
 
 class HealthMonitorPage extends StatefulWidget {
   const HealthMonitorPage({super.key});
@@ -18,6 +21,11 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
   double _latestWeight = 0.0;
   final double _waterGoal = 2400.0;
 
+  // hold today's records for the today log
+  List<HeartRateModel> _todayHeartRecords = [];
+  List<WaterIntakeModel> _todayWaterRecords = [];
+  List<WeightModel> _todayWeightRecords = [];
+
   @override
   void initState(){
     super.initState();
@@ -26,29 +34,29 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
 
   // load today record & extract values for the display cards
   void _loadTodaySummary() async{
-    List<HealthRecordModel> todayRecords = await dbService.getTodayRecords();
+    List<HeartRateModel> heartRecords = await dbService.getTodayHeartRateRecords();
+    List<WaterIntakeModel> waterRecords = await dbService.getTodayWaterRecords();
+    List<WeightModel> weightRecords = await dbService.getTodayWeightRecords();
 
-    int heartRate = 0;
+    // latest heart rate
+    int heartRate = heartRecords.isNotEmpty ? heartRecords.first.bpm : 0;
+
+    // total water today
     double waterTotal = 0;
-    double weight = 0.0;
-    
-    for (var record in todayRecords){
-      // order from newest first
-      if(record.heartRate > 0 && heartRate == 0){
-        heartRate = record.heartRate;
-      }
-      if(record.weight > 0 && weight == 0){
-        weight = record.weight;
-      }
-      
-      // sum of water total
-      waterTotal += record.waterIntake;
+    for (var r in waterRecords){
+      waterTotal += r.amountMl;
     }
-    
+
+    // latest weight
+    double weight = weightRecords.isNotEmpty ? weightRecords.first.weightKg : 0.0;
+
     setState(() {
       _latestHeartRate = heartRate;
       _todayWaterTotal = waterTotal;
       _latestWeight = weight;
+      _todayHeartRecords = heartRecords;
+      _todayWaterRecords = waterRecords;
+      _todayWeightRecords = weightRecords;
     });
   }
   
@@ -57,11 +65,30 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
     _loadTodaySummary();
     setState(() {});
   }
+
+  // combine water intake, weight, & heart rate lists into one, sorted by newest first
+  List<Map<String, dynamic>> _getCombinedTodayLog() {
+    List<Map<String, dynamic>> combined = [];
+
+    for (var r in _todayHeartRecords) {
+      combined.add({'type': 'heart', 'record': r, 'createdOn': r.createdOn});
+    }
+    for (var r in _todayWaterRecords) {
+      combined.add({'type': 'water', 'record': r, 'createdOn': r.createdOn});
+    }
+    for (var r in _todayWeightRecords) {
+      combined.add({'type': 'weight', 'record': r, 'createdOn': r.createdOn});
+    }
+
+    combined.sort((a, b) => b['createdOn'].compareTo(a['createdOn']));
+    return combined;
+  }
   
   @override
   Widget build(BuildContext context) {
     double waterProgress = (_todayWaterTotal / _waterGoal).clamp(0.0, 1.0);
-    
+    List<Map<String, dynamic>> combinedLog = _getCombinedTodayLog();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       
@@ -109,6 +136,8 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                         size: 22,
                       ),
 
+                      const SizedBox(width: 10),
+
                       const Text(
                         'Heart Rate',
                         style: TextStyle(
@@ -118,8 +147,9 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                       ),
 
                       const Expanded(child: SizedBox()),
+
                       Text(
-                        _latestHeartRate == 0 ? '-- bpm' : '&_latestHeartRate bpm',
+                        _latestHeartRate == 0 ? '-- bpm' : '$_latestHeartRate bpm',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -227,9 +257,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                             const SizedBox(height: 6),
 
                             Text(
-                              _latestWeight == 0
-                                  ? '-- kg'
-                                  : '${_latestWeight.toStringAsFixed(1)} kg',
+                              _latestWeight == 0 ? '-- kg' : '${_latestWeight.toStringAsFixed(1)} kg',
                               style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold
@@ -319,7 +347,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const Placeholder(), // TODO: Replace: WaterIntakePage()
+                              builder: (context) => WaterIntakePage()
                             ),
                           );
                           _refreshPage();
@@ -418,57 +446,49 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
 
                 const SizedBox(height: 12),
 
-                FutureBuilder(
-                  future: dbService.getTodayRecords(),
-                  builder: (context, snapshot) {
+                combinedLog.isEmpty ? Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
 
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ListView.separated(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: snapshot.data!.length,
-                          separatorBuilder: (context, index) =>
-                          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                          itemBuilder: (context, index) {
-                            HealthRecordModel record = snapshot.data![index];
-                            return _buildLogItem(record);
-                          },
-                        ),
-                      );
-                    }
-
-                    return Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                  child: const Center(
+                    child: Text(
+                      'No records logged today.',
+                      style: TextStyle(
+                          color: Colors.grey
                       ),
-                      child: const Center(
-                        child: Text(
-                          'No records logged today.',
-                          style: TextStyle(
-                              color: Colors.grey
-                          ),
-                        ),
+                    ),
+                  ),
+                )
+
+                    : Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                    );
-                  },
+                    ],
+                  ),
+
+                  child: ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: combinedLog.length,
+                    separatorBuilder: (context, index) =>
+                    const Divider(
+                        height: 1,
+                        color: Color(0xFFEEEEEE)
+                    ),
+                    itemBuilder: (context, index) {
+                      return _buildLogItem(combinedLog[index]);
+                    },
+                  ),
                 ),
 
                 const SizedBox(height: 20),
@@ -497,44 +517,53 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
   }
 
   // Each row in Today's Log — tapping it goes to the edit page for that record
-  Widget _buildLogItem(HealthRecordModel record) {
+  Widget _buildLogItem(Map<String, dynamic> item) {
+    String type = item['type'];
     String title = '';
     String value = '';
-    String time = _formatTime(record.createdOn);
+    String time = '';
     Color dotColor = Colors.grey;
 
-    if (record.heartRate > 0) {
+    if (type == 'heart') {
+      HeartRateModel record = item['record'];
       title = 'Heart Rate';
-      value = '${record.heartRate} bpm';
+      value = '${record.bpm} bpm';
+      time = _formatTime(record.createdOn);
       dotColor = Colors.red;
-    } else if (record.waterIntake > 0) {
+    } else if (type == 'water') {
+      WaterIntakeModel record = item['record'];
       title = 'Water Intake';
-      value = '${record.waterIntake.toInt()} ml';
+      value = '${record.amountMl.toInt()} ml';
+      time = _formatTime(record.createdOn);
       dotColor = const Color(0xFF9FA8DA);
-    } else if (record.weight > 0) {
+    } else if (type == 'weight') {
+      WeightModel record = item['record'];
       title = 'Weight';
-      value = '${record.weight.toStringAsFixed(1)} kg';
+      value = '${record.weightKg.toStringAsFixed(1)} kg';
+      time = _formatTime(record.createdOn);
       dotColor = Colors.green;
     }
 
     return InkWell(
       onTap: () async {
-        // go to the edit page based on what type of record
-        if (record.heartRate > 0) {
+        if (type == 'heart') {
+          HeartRateModel record = item['record'];
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const Placeholder(), // TODO: Replace: HeartRateEditPage(record: record)
+              builder: (context) => const Placeholder(), // TODO Replace: HeartRateEditPage(record: record)
             ),
           );
-        } else if (record.waterIntake > 0) {
+        } else if (type == 'water') {
+          WaterIntakeModel record = item['record'];
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const Placeholder(), // TODO Replace: WaterIntakeEditPage(record: record)
+              builder: (context) => WaterIntakeEditPage(record: record)
             ),
           );
-        } else if (record.weight > 0) {
+        } else if (type == 'weight') {
+          WeightModel record = item['record'];
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -551,7 +580,6 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
             horizontal: 16,
             vertical: 12
         ),
-
         child: Row(
           children: [
             Container(
@@ -561,7 +589,11 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                 color: dotColor.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.circle, color: dotColor, size: 14),
+              child: Icon(
+                  Icons.circle,
+                  color: dotColor,
+                  size: 14
+              ),
             ),
 
             const SizedBox(width: 12),
@@ -601,13 +633,11 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
 
             const SizedBox(width: 4),
 
-            // hint to show it's tappable
             const Icon(
                 Icons.chevron_right,
                 color: Colors.grey,
                 size: 18
             ),
-
           ],
         ),
       ),
