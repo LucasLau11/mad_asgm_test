@@ -1,6 +1,9 @@
 //flutter pub add sqflite
 //flutter pub add uuid
 //flutter pub add path_provider
+// heart rate monitor (YH)
+// flutter pub add camera
+// flutter pub add permission_handler
 
 import 'package:flutter/material.dart';
 import 'views/health_monitor_page.dart';
@@ -57,11 +60,11 @@ class _MyHomePageState extends State<MyHomePage> {
           selectedItemColor: const Color(0xFF9FA8DA),
           unselectedItemColor: Colors.grey,
           onTap: (index){
+            // pop back to root if user taps any nav tab while on a subpage
             Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
             setState(() {
               _currentIndex = index;
             });
-            // pop back to root if user taps any nav tab while on a subpage
 
           },
           items: [
