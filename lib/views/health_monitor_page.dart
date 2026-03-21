@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mad_asgm/models/water_intake_model.dart';
 import 'package:mad_asgm/views/water_intake_edit_page.dart';
 import 'package:mad_asgm/views/water_intake_page.dart';
+import 'package:mad_asgm/views/weight_log_edit_page.dart';
+import 'package:mad_asgm/views/weight_log_page.dart';
 import '../../controllers/database_service.dart';
 import '../models/heart_rate_model.dart';
 import '../models/weight_model.dart';
@@ -393,7 +395,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const Placeholder(), // TODO: Replace: WeightLogPage()
+                              builder: (context) => WeightLogPage(),
                             ),
                           );
                           _refreshPage();
@@ -496,23 +498,6 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
             ),
           ),
       ),
-
-      // navbar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 3,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF9FA8DA),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          // TODO: Handle navigation to other main tabs
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workout'),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Activity'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Health'),
-        ],
-      ),
     );
   }
 
@@ -567,7 +552,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const Placeholder(), // TODO Replace: WeightEditPage(record: record)
+              builder: (context) => WeightEditPage(record: record),
             ),
           );
         }

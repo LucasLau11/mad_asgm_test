@@ -1,79 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controllers/database_service.dart';
-import '../models/water_intake_model.dart';
+import '../models/weight_model.dart';
 
-class WaterIntakeEditPage extends StatefulWidget {
-  final WaterIntakeModel record; // the record passed from the previous page
+class WeightEditPage extends StatefulWidget {
+  final WeightModel record; // record passed from weight log page
 
-  const WaterIntakeEditPage({super.key, required this.record});
+  const WeightEditPage({super.key, required this.record});
 
   @override
-  State<WaterIntakeEditPage> createState() => _WaterIntakeEditPageState();
+  State<WeightEditPage> createState() => _WeightEditPageState();
 }
 
-class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
+class _WeightEditPageState extends State<WeightEditPage> {
   final dbService = DatabaseService();
 
-  late TextEditingController amountController;
+  late TextEditingController weightController;
   late TextEditingController noteController;
-
-  String _selectedBeverageType = 'Water';
-  final List<String> _beverageTypes = ['Water', 'Coffee', 'Tea', 'Juice', 'Other'];
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill fields with the existing record's data
-    amountController = TextEditingController(text: widget.record.amountMl.toInt().toString());
+    // Pre-fill with existing record data
+    weightController = TextEditingController(
+      text: widget.record.weightKg.toStringAsFixed(1),
+    );
     noteController = TextEditingController(text: widget.record.note);
-    _selectedBeverageType = widget.record.beverageType;
   }
 
   @override
   void dispose() {
     super.dispose();
-    amountController.dispose();
+    weightController.dispose();
     noteController.dispose();
   }
 
-  // Save the updated record
+  // Save updated record
   void _saveChanges() async {
-    if (amountController.text.isEmpty) {
+    if (weightController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an amount.')),
+        const SnackBar(content: Text('Please enter your weight.')),
       );
       return;
     }
 
-    double amount = double.parse(amountController.text);
+    double weight = double.tryParse(weightController.text) ?? 0;
 
-    if (amount <= 0) {
+    if (weight <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Amount must be greater than 0.')),
+        const SnackBar(content: Text('Please enter a valid weight.')),
       );
       return;
     }
 
-    WaterIntakeModel updatedRecord = WaterIntakeModel(
+    WeightModel updatedRecord = WeightModel(
       id: widget.record.id,
-      amountMl: amount,
-      beverageType: _selectedBeverageType,
-      time: widget.record.time,       // keep the original time
+      weightKg: weight,
       note: noteController.text,
-      createdOn: widget.record.createdOn, // keep the original date
+      createdOn: widget.record.createdOn, // keep original date
     );
 
-    await dbService.editWaterRecord(updatedRecord);
+    await dbService.editWeightRecord(updatedRecord);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Record updated!')),
     );
 
-    Navigator.pop(context); // go back to water intake page
+    Navigator.pop(context); // go back to weight log page
   }
 
-  // Show delete confirmation as a bottom sheet
+  // Show delete confirmation as bottom sheet
   void _showDeleteBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -121,7 +117,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
               const SizedBox(height: 8),
 
               Text(
-                'You\'re about to delete the water intake record at ${widget.record.time}. This action cannot be undone.',
+                'You\'re about to delete the weight record at ${_formatTime(widget.record.createdOn)}. This action cannot be undone.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
@@ -141,7 +137,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF9FA8DA),
+                        color: Colors.green,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -150,11 +146,11 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Water Intake - ${widget.record.time}',
+                          '${_formatDate(widget.record.createdOn)} - ${_formatTime(widget.record.createdOn)}',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         ),
                         Text(
-                          '${widget.record.amountMl.toInt()} ml - ${widget.record.note.isEmpty ? widget.record.beverageType : widget.record.note}',
+                          '${widget.record.weightKg.toStringAsFixed(1)} kg${widget.record.note.isEmpty ? '' : ' - ${widget.record.note}'}',
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
@@ -194,9 +190,9 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
-                    await dbService.deleteWaterRecord(widget.record.id);
+                    await dbService.deleteWeightRecord(widget.record.id);
                     Navigator.pop(context); // close bottom sheet
-                    Navigator.pop(context); // go back to water intake page
+                    Navigator.pop(context); // go back to weight log page
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEF9A9A),
@@ -221,6 +217,40 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
     );
   }
 
+  // Format "2026-03-01 08:30:00" -> "08:30 AM"
+  String _formatTime(String dateTime) {
+    if (dateTime.isEmpty) return '';
+    try {
+      DateTime dt = DateTime.parse(dateTime);
+      int hour = dt.hour;
+      int minute = dt.minute;
+      String period = hour >= 12 ? 'PM' : 'AM';
+      if (hour > 12) hour -= 12;
+      if (hour == 0) hour = 12;
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+    } catch (e) {
+      return dateTime;
+    }
+  }
+
+  // Format "2026-03-01 08:30:00" -> "Today, Mar 1" or "Feb 28"
+  String _formatDate(String dateTime) {
+    if (dateTime.isEmpty) return '';
+    try {
+      DateTime dt = DateTime.parse(dateTime);
+      DateTime now = DateTime.now();
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      bool isToday = dt.year == now.year &&
+          dt.month == now.month &&
+          dt.day == now.day;
+      if (isToday) return 'Today, ${months[dt.month - 1]} ${dt.day}';
+      return '${months[dt.month - 1]} ${dt.day}';
+    } catch (e) {
+      return dateTime;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -234,7 +264,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Edit Intake',
+          'Edit Weight',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black),
         ),
       ),
@@ -250,7 +280,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF9FA8DA),
+                color: Colors.green,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -277,7 +307,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                         ),
                       ),
                       Text(
-                        'Logged at ${widget.record.time}',
+                        'Logged at ${_formatTime(widget.record.createdOn)}',
                         style: const TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                     ],
@@ -313,14 +343,18 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
 
                   const SizedBox(height: 16),
 
-                  // Amount field
-                  const Text('Amount (ML)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  // Weight input
+                  const Text('Weight (KG)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: weightController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
                     decoration: InputDecoration(
+                      suffixText: 'kg',
+                      suffixStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFFF5F5F5),
                       border: OutlineInputBorder(
@@ -333,7 +367,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF9FA8DA)),
+                        borderSide: const BorderSide(color: Colors.green),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
@@ -341,67 +375,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
 
                   const SizedBox(height: 12),
 
-                  // Beverage Type dropdown
-                  const Text('Beverage Type', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    value: _selectedBeverageType,
-                    items: _beverageTypes.map((String type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(type),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _selectedBeverageType = value!;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF9FA8DA)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Time field (read only — time was set when originally logged)
-                  const Text('Time', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    readOnly: true,
-                    controller: TextEditingController(text: widget.record.time),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Note field
+                  // Note input
                   const Text('Note (Optional)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
@@ -420,7 +394,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF9FA8DA)),
+                        borderSide: const BorderSide(color: Colors.green),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),

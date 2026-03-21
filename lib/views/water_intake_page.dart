@@ -412,23 +412,6 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
           ],
         ),
       ),
-
-      // ---- Bottom Navigation Bar ----
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 3,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF9FA8DA),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          // TODO: Handle navigation to other main tabs
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workout'),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Activity'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Health'),
-        ],
-      ),
     );
   }
 
