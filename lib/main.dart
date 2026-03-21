@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'views/health_monitor_page.dart';
+import 'views/workout_program_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FitPulse',
       theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const MyHomePage(),
     );
@@ -37,7 +38,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // page navigation
   final List<Widget> _pages = [
     const Placeholder(), // TODO replace with profile
-    const Placeholder(), // TODO replace with workout
+    const WorkoutProgramPage(), // TODO replace with workout
     const Placeholder(), // TODO replace with exercise
     const HealthMonitorPage(),
   ];
