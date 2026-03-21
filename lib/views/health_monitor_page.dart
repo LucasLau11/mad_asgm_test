@@ -7,6 +7,7 @@ import 'package:mad_asgm/views/weight_log_page.dart';
 import '../../controllers/database_service.dart';
 import '../models/heart_rate_model.dart';
 import '../models/weight_model.dart';
+import 'heart_rate_page.dart';
 
 class HealthMonitorPage extends StatefulWidget {
   const HealthMonitorPage({super.key});
@@ -304,7 +305,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const Placeholder(), // TODO: Replace: HeartRatePage()
+                              builder: (context) => HeartRatePage(),
                             ),
                           );
                           _refreshPage();
@@ -531,15 +532,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
 
     return InkWell(
       onTap: () async {
-        if (type == 'heart') {
-          HeartRateModel record = item['record'];
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const Placeholder(), // TODO Replace: HeartRateEditPage(record: record)
-            ),
-          );
-        } else if (type == 'water') {
+        if (type == 'water') {
           WaterIntakeModel record = item['record'];
           await Navigator.push(
             context,
