@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
+import 'add_workout_program_page.dart';
+import 'manage_workout_page.dart';
 import 'workout_detail_page.dart';
 
 class WorkoutProgramPage extends StatefulWidget {
@@ -145,33 +147,53 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 32),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDAD9FF),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Text(
-                  'Manage',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManageWorkoutsPage(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDAD9FF),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Text(
+                    'Manage',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ),
             ),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDAD9FF),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add,
-                size: 32,
-                color: Colors.grey[700],
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddWorkoutProgramPage(),
+                  ),
+                );
+              },
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDAD9FF),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add,
+                  size: 32,
+                  color: Colors.grey[700],
+                ),
               ),
             ),
           ],

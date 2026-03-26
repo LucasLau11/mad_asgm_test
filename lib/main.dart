@@ -4,6 +4,8 @@
 // heart rate monitor (YH)
 // flutter pub add camera
 // flutter pub add permission_handler
+//workout program module (TW)
+//flutter pub add google_ml_kit
 
 import 'package:flutter/material.dart';
 import 'views/health_monitor_page.dart';
@@ -41,7 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // page navigation
   final List<Widget> _pages = [
     const Placeholder(), // TODO replace with profile
-    const WorkoutProgramPage(), // TODO replace with workout
+    const WorkoutProgramPage(),
     const Placeholder(), // TODO replace with exercise
     const HealthMonitorPage(),
   ];

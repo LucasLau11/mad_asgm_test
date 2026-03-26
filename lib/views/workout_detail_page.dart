@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mad_asgm/views/workout_tracking_page.dart';
 import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
 import '../models/workout_exercise_model.dart';
 import 'exercise_detail_page.dart';
+import 'dart:math' as Math;
 
 class WorkoutDetailPage extends StatefulWidget {
   final Workout workout;
@@ -193,20 +195,34 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                   const SizedBox(height: 24),
 
                   // Start Workout Button
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDAD9FF),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'Start Workout',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                  GestureDetector(
+                    onTap: () {
+                      final exercises = _controller.getExercisesForWorkout(widget.workout.id);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WorkoutTrackingPage(
+                            exercises: exercises,
+                            workoutName: widget.workout.name,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDAD9FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Start Workout',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ),

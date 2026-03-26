@@ -1,0 +1,164 @@
+import 'package:flutter/material.dart';
+import '../controllers/workout_controller.dart';
+import '../models/workout_model.dart';
+import 'edit_workout_program_page.dart';
+
+class ManageWorkoutsPage extends StatefulWidget {
+  const ManageWorkoutsPage({Key? key}) : super(key: key);
+
+  @override
+  State<ManageWorkoutsPage> createState() => _ManageWorkoutsPageState();
+}
+
+class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
+  final WorkoutController _controller = WorkoutController();
+  List<Workout> _workouts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkouts();
+  }
+
+  void _loadWorkouts() {
+    setState(() {
+      _workouts = _controller.getAllWorkouts();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.black87,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'Manage Workouts',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Workouts List
+            Expanded(
+              child: _workouts.isEmpty
+                  ? const Center(
+                child: Text(
+                  'No workouts available',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: _workouts.length,
+                itemBuilder: (context, index) {
+                  final workout = _workouts[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildWorkoutCard(workout),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutCard(Workout workout) {
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EditWorkoutProgramPage(workout: workout),
+          ),
+        );
+        // Reload workouts when coming back
+        _loadWorkouts();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Color indicator
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Color(int.parse(workout.color)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Workout Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    workout.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Edit icon
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[400],
+              size: 28,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
