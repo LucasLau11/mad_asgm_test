@@ -183,7 +183,7 @@ class _AddExerciseViewState extends State<AddExerciseView> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _isEditing ? 'edit exercise' : 'add exercise',
+          _isEditing ? 'Edit exercise' : 'Add exercise',
           style: const TextStyle(
             color: Colors.black87,
             fontSize: 20,
@@ -217,7 +217,7 @@ class _AddExerciseViewState extends State<AddExerciseView> {
 
             // Exercise Type
             _buildFieldRow(
-              label: 'exercise',
+              label: 'Exercise',
               value: _selectedType.displayName,
               onTap: _showExerciseTypePicker,
             ),
@@ -292,10 +292,10 @@ class _AddExerciseViewState extends State<AddExerciseView> {
 
             // Notes
             const Text(
-              'add note',
+              'Add note',
               style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey,
+                fontSize: 15,
+                // color: Colors.grey,
               ),
             ),
             const SizedBox(height: 8),
