@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
-import 'add_workout_program_page.dart';
+import 'workout_program_add_page.dart';
 import 'manage_workout_page.dart';
 import 'workout_detail_page.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
-import 'edit_workout_program_page.dart';
+import 'workout_program_edit_page.dart';
 
 class ManageWorkoutsPage extends StatefulWidget {
   const ManageWorkoutsPage({Key? key}) : super(key: key);

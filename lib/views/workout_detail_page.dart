@@ -3,7 +3,7 @@ import 'package:mad_asgm/views/workout_tracking_page.dart';
 import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
 import '../models/workout_exercise_model.dart';
-import 'exercise_detail_page.dart';
+import 'workout_exercise_detail_page.dart';
 import 'dart:math' as Math;
 
 class WorkoutDetailPage extends StatefulWidget {

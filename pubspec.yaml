@@ -40,6 +40,28 @@ dependencies:
   camera: ^0.12.0+1
   permission_handler: ^12.0.1
   google_mlkit_pose_detection: ^0.11.0
+  google_ml_kit: ^0.17.0
+
+#  yp module dependency
+  intl: ^0.18.1
+  # Keep screen awake during workout
+  wakelock_plus: ^1.1.4
+
+  # Notifications
+  flutter_local_notifications: ^21.0.0
+  #storage store goal defined in exercise module "live_exercise_view.dart"
+  shared_preferences: ^2.5.5
+  # Maps - OpenStreetMap
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+
+  # Sensors & Location
+  pedometer: ^4.0.1
+  geolocator: ^10.1.0
+#  permission_handler: ^11.0.1
+
+  path: ^1.8.3
+  provider: ^6.1.1
 
 dev_dependencies:
   flutter_test:

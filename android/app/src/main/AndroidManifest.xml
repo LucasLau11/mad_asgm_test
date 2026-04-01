@@ -3,6 +3,25 @@
     <uses-feature android:name="android.hardware.camera"/>
     <uses-feature android:name="android.hardware.camera.flash"/>
 
+    <!-- YP MODULE PERMISSION-->
+    <!-- Permissions for Activity Tracking -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- Permissions for Location Tracking -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Permissions for Foreground Service (for background tracking) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Permissions for Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Permission to keep screen/CPU awake during workout -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Internet permission for maps (if using Google Maps) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+
     <application
         android:label="mad_asgm"
         android:name="${applicationName}"
