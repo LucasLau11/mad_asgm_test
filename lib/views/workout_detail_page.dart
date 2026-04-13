@@ -4,7 +4,6 @@ import '../controllers/workout_controller.dart';
 import '../models/workout_model.dart';
 import '../models/workout_exercise_model.dart';
 import 'workout_exercise_detail_page.dart';
-import 'dart:math' as Math;
 
 class WorkoutDetailPage extends StatefulWidget {
   final Workout workout;
@@ -21,6 +20,7 @@ class WorkoutDetailPage extends StatefulWidget {
 class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
   final WorkoutController _controller = WorkoutController();
   List<Exercise> _exercises = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,9 +28,13 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
     _loadExercises();
   }
 
-  void _loadExercises() {
+  Future<void> _loadExercises() async {
+    setState(() => _isLoading = true);
+    // Properly await the future result
+    final exercises = await _controller.getExercisesForWorkout(widget.workout.id);
     setState(() {
-      _exercises = _controller.getExercisesForWorkout(widget.workout.id);
+      _exercises = exercises;
+      _isLoading = false;
     });
   }
 
@@ -41,7 +45,6 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Back Button
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -55,19 +58,15 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.black87,
-                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.black87),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    widget.workout.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  Expanded(
+                    child: Text(
+                      widget.workout.name,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -75,19 +74,15 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
             ),
 
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  // Image Card
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Stack(
-                      children: [
-                        Padding(
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: [
+                      Container(
+                        height: 200,
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                        child: Padding(
                           padding: const EdgeInsets.all(20.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,21 +92,11 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                                   children: [
                                     TextSpan(
                                       text: '${widget.workout.name.split(' ')[0].toUpperCase()} ',
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.red,
-                                        letterSpacing: 2,
-                                      ),
+                                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.red, letterSpacing: 2),
                                     ),
                                     const TextSpan(
                                       text: 'DAY',
-                                      style: TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        letterSpacing: 2,
-                                      ),
+                                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87, letterSpacing: 2),
                                     ),
                                   ],
                                 ),
@@ -119,118 +104,73 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                  // Info Card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.workout.name,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoItem('Strength', 'Goals'),
-                            _buildInfoItem('${widget.workout.durationMinutes} mins', 'Time'),
-                            _buildInfoItem(widget.workout.difficulty, 'Difficulties'),
+                            Text(widget.workout.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoItem('Strength', 'Goals'),
+                                _buildInfoItem('${widget.workout.durationMinutes} mins', 'Time'),
+                                _buildInfoItem(widget.workout.difficulty, 'Difficulties'),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Exercises Section
-                  Text(
-                    'Exercises (${_exercises.length})',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Exercise List
-                  ..._exercises.map((exercise) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildExerciseItem(exercise),
-                  )),
-
-                  const SizedBox(height: 16),
-
-                  // More Link
-                  Center(
-                    child: TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        '------ More ------',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
                       ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                  // Start Workout Button
-                  GestureDetector(
-                    onTap: () {
-                      final exercises = _controller.getExercisesForWorkout(widget.workout.id);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WorkoutTrackingPage(
-                            exercises: exercises,
-                            workoutName: widget.workout.name,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDAD9FF),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Start Workout',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                      Text('Exercises (${_exercises.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      const SizedBox(height: 16),
+
+                      if (_exercises.isEmpty)
+                        const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('No exercises in this workout'))),
+
+                      ..._exercises.map((exercise) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildExerciseItem(exercise),
+                      )),
+
+                      const SizedBox(height: 24),
+
+                      GestureDetector(
+                        onTap: () {
+                          if (_exercises.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => WorkoutTrackingPage(
+                                  exercises: _exercises,
+                                  workoutName: widget.workout.name,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add exercises first')));
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          decoration: BoxDecoration(color: const Color(0xFFDAD9FF), borderRadius: BorderRadius.circular(16)),
+                          child: const Center(
+                            child: Text('Start Workout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
             ),
           ],
         ),
@@ -239,100 +179,41 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
   }
 
   Widget _buildInfoItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
+    return Column(children: [
+      Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+      const SizedBox(height: 4),
+      Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+    ]);
   }
 
   Widget _buildExerciseItem(Exercise exercise) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ExerciseDetailPage(exercise: exercise),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ExerciseDetailPage(exercise: exercise)));
       },
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
         child: Row(
           children: [
-            // Exercise Icon
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8E4FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+            Container(width: 50, height: 50, decoration: BoxDecoration(color: const Color(0xFFE8E4FF), borderRadius: BorderRadius.circular(12))),
             const SizedBox(width: 16),
-            // Exercise Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    exercise.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
+                  Text(exercise.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 4),
-                  Text(
-                    'x ${exercise.reps}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+                  Text('x ${exercise.reps}', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                 ],
               ),
             ),
-            // Sets and More
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '${exercise.sets} sets',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
+                Text('${exercise.sets} sets', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 4),
-                Text(
-                  'More >',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
+                 Text('More >', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               ],
             ),
           ],

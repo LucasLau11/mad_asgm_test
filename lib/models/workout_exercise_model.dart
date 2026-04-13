@@ -5,7 +5,7 @@ class Exercise {
   final int sets;
   final int reps;
   final String instructions;
-  final String? videoUrl;
+  final List<String> imageUrls;
 
   Exercise({
     required this.id,
@@ -14,7 +14,7 @@ class Exercise {
     required this.sets,
     required this.reps,
     required this.instructions,
-    this.videoUrl,
+    required this.imageUrls,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,7 +25,7 @@ class Exercise {
       'sets': sets,
       'reps': reps,
       'instructions': instructions,
-      'videoUrl': videoUrl,
+      'image_urls': imageUrls,
     };
   }
 
@@ -37,7 +37,6 @@ class Exercise {
       sets: map['sets'],
       reps: map['reps'],
       instructions: map['instructions'],
-      videoUrl: map['videoUrl'],
-    );
+      imageUrls: List<String>.from(map['image_urls'] ?? []),    );
   }
 }

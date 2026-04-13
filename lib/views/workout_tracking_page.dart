@@ -4,9 +4,38 @@ import 'package:camera/camera.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'dart:io';
 import '../models/workout_exercise_model.dart';
 import '../widgets/pose_painter.dart';
+
+// Angle smoothing helper class
+class AngleSmoothing {
+  final int windowSize;
+  final List<double> _history = [];
+
+  AngleSmoothing({this.windowSize = 5});
+
+  double smooth(double newValue) {
+    _history.add(newValue);
+    if (_history.length > windowSize) {
+      _history.removeAt(0);
+    }
+
+    double sum = 0;
+    double weightSum = 0;
+    for (int i = 0; i < _history.length; i++) {
+      double weight = (i + 1).toDouble();
+      sum += _history[i] * weight;
+      weightSum += weight;
+    }
+
+    return sum / weightSum;
+  }
+
+  void reset() {
+    _history.clear();
+  }
+}
 
 class WorkoutTrackingPage extends StatefulWidget {
   final List<Exercise> exercises;
@@ -27,7 +56,6 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
   late PoseDetector _poseDetector;
   bool _canProcess = true;
   bool _isBusy = false;
-  CustomPaint? _customPaint;
 
   List<Pose>? _poses;
   bool _isDetectionActive = false;
@@ -40,15 +68,35 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
   int _restTimeRemaining = 60;
   Timer? _restTimer;
 
-  // Rep detection
-  bool _isInStartPosition = false;
+  // Improved rep detection
+  bool _isInStartPosition = true;
   bool _isInEndPosition = false;
+  int _framesInDownPosition = 0;
+  int _framesInUpPosition = 0;
+
+  // Smoothing
+  final AngleSmoothing _kneeSmoothing = AngleSmoothing(windowSize: 5);
+
+  // Accuracy thresholds - TUNED FOR BETTER INDOOR DETECTION
+  final double _confidenceThreshold = 0.25; // More forgiving
+  final double _downAngleThreshold = 120; // Easier to trigger "down"
+  final double _upAngleThreshold = 155; // Standard "up"
+  final int _requiredFramesInPosition = 2; // Faster response
+
+  // Feedback
+  String _feedbackMessage = 'Get ready!';
+  Color _feedbackColor = Colors.white;
+
+  int _frameCount = 0;
 
   @override
   void initState() {
     super.initState();
     _poseDetector = PoseDetector(
-      options: PoseDetectorOptions(),
+      options: PoseDetectorOptions(
+        mode: PoseDetectionMode.stream,
+        model: PoseDetectionModel.accurate,
+      ),
     );
     _initializeCamera();
   }
@@ -70,9 +118,11 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
         frontCamera,
         ResolutionPreset.high,
         enableAudio: false,
+        imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
       );
 
       await _cameraController!.initialize();
+      await _cameraController!.setFocusMode(FocusMode.auto);
 
       if (!mounted) return;
 
@@ -87,6 +137,12 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
   Future<void> _processCameraImage(CameraImage image) async {
     if (!_canProcess || _isBusy || !_isDetectionActive) return;
     _isBusy = true;
+
+    _frameCount++;
+    if (_frameCount % 2 != 0) {
+      _isBusy = false;
+      return;
+    }
 
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) {
@@ -104,6 +160,8 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
 
         if (poses.isNotEmpty) {
           _detectRep(poses.first);
+        } else {
+          _updateFeedback('Step back! I can\'t see you', Colors.red);
         }
       }
     } catch (e) {
@@ -118,12 +176,14 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     final sensorOrientation = camera.sensorOrientation;
 
     InputImageRotation? rotation;
-    if (camera.lensDirection == CameraLensDirection.back) {
-      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+    if (Platform.isAndroid) {
+      var rotationValue = sensorOrientation;
+      if (camera.lensDirection == CameraLensDirection.front) {
+        rotationValue = (sensorOrientation + 0) % 360;
+      }
+      rotation = InputImageRotationValue.fromRawValue(rotationValue);
     } else {
-      rotation = InputImageRotationValue.fromRawValue(
-        (360 - sensorOrientation) % 360,
-      );
+      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
     }
 
     if (rotation == null) return null;
@@ -131,25 +191,14 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (format == null) return null;
 
-    // Combine bytes from all planes
-    int numBytes = 0;
+    final WriteBuffer allBytes = WriteBuffer();
     for (final plane in image.planes) {
-      numBytes += plane.bytes.length;
+      allBytes.putUint8List(plane.bytes);
     }
-
-    final Uint8List allBytes = Uint8List(numBytes);
-    int nextIndex = 0;
-    for (final plane in image.planes) {
-      allBytes.setRange(
-        nextIndex,
-        nextIndex + plane.bytes.length,
-        plane.bytes,
-      );
-      nextIndex += plane.bytes.length;
-    }
+    final bytes = allBytes.done().buffer.asUint8List();
 
     return InputImage.fromBytes(
-      bytes: allBytes,
+      bytes: bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
@@ -162,29 +211,70 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
   void _detectRep(Pose pose) {
     final currentExercise = widget.exercises[_currentExerciseIndex];
 
-    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
-    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
-    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
+    // Left side landmarks
+    final lKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+    final lHip = pose.landmarks[PoseLandmarkType.leftHip];
+    final lAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
 
-    if (leftKnee != null && rightKnee != null &&
-        leftHip != null && rightHip != null &&
-        leftAnkle != null && rightAnkle != null) {
+    // Right side landmarks
+    final rKnee = pose.landmarks[PoseLandmarkType.rightKnee];
+    final rHip = pose.landmarks[PoseLandmarkType.rightHip];
+    final rAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
 
-      final leftKneeAngle = _calculateAngle(leftHip, leftKnee, leftAnkle);
-      final rightKneeAngle = _calculateAngle(rightHip, rightKnee, rightAnkle);
-      final avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+    double currentKneeAngle = 0;
+    bool hasValidSide = false;
 
-      if (avgKneeAngle < 100 && !_isInEndPosition) {
+    // Use whichever side has better visibility (likelihood)
+    if (lKnee != null && lHip != null && lAnkle != null && 
+        lKnee.likelihood > _confidenceThreshold) {
+      currentKneeAngle = _calculateAngle(lHip, lKnee, lAnkle);
+      hasValidSide = true;
+    } else if (rKnee != null && rHip != null && rAnkle != null && 
+               rKnee.likelihood > _confidenceThreshold) {
+      currentKneeAngle = _calculateAngle(rHip, rKnee, rAnkle);
+      hasValidSide = true;
+    }
+
+    if (!hasValidSide) {
+      _updateFeedback('Step back and stay visible', Colors.orange);
+      return;
+    }
+
+    final smoothedAngle = _kneeSmoothing.smooth(currentKneeAngle);
+
+    // Rep detection state machine
+    if (smoothedAngle < _downAngleThreshold) {
+      _framesInDownPosition++;
+      _framesInUpPosition = 0;
+
+      if (_framesInDownPosition >= _requiredFramesInPosition && !_isInEndPosition) {
         _isInEndPosition = true;
         _isInStartPosition = false;
-      } else if (avgKneeAngle > 160 && _isInEndPosition && !_isInStartPosition) {
+        _updateFeedback('Good depth! Now stand up', Colors.green);
+      }
+    } else if (smoothedAngle > _upAngleThreshold) {
+      _framesInUpPosition++;
+      _framesInDownPosition = 0;
+
+      if (_framesInUpPosition >= _requiredFramesInPosition && _isInEndPosition && !_isInStartPosition) {
         _isInStartPosition = true;
         _isInEndPosition = false;
         _incrementRep();
+        _updateFeedback('Great! ${_repCount}/${currentExercise.reps}', Colors.green);
       }
+    } else {
+      if (!_isInEndPosition) {
+        _updateFeedback('Go lower...', Colors.yellow);
+      }
+    }
+  }
+
+  void _updateFeedback(String message, Color color) {
+    if (mounted && _feedbackMessage != message) {
+      setState(() {
+        _feedbackMessage = message;
+        _feedbackColor = color;
+      });
     }
   }
 
@@ -201,7 +291,13 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
   void _startDetection() {
     setState(() {
       _isDetectionActive = true;
+      _framesInDownPosition = 0;
+      _framesInUpPosition = 0;
+      _isInEndPosition = false;
+      _isInStartPosition = true;
+      _repCount = 0;
     });
+    _kneeSmoothing.reset();
   }
 
   void _incrementRep() {
@@ -227,6 +323,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
           _repCount = 0;
           _isDetectionActive = false;
         });
+        _kneeSmoothing.reset();
         _showCompletionSnackbar('Exercise Complete! Moving to next exercise.');
       } else {
         _completeWorkout();
@@ -245,6 +342,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
       _repCount = 0;
     });
 
+    _kneeSmoothing.reset();
     _showRestSnackbar();
 
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -277,20 +375,8 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
         content: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Rest Time',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              '${_restTimeRemaining}s',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Rest Time', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('${_restTimeRemaining}s', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ],
         ),
         duration: Duration(seconds: _restTimeRemaining),
@@ -307,18 +393,12 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
 
   void _showCompletionSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 2)),
     );
   }
 
   void _completeWorkout() {
-    setState(() {
-      _isDetectionActive = false;
-    });
+    setState(() => _isDetectionActive = false);
 
     showDialog(
       context: context,
@@ -341,10 +421,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -365,17 +442,11 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: _cameraController == null || !_cameraController!.value.isInitialized
-            ? const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        )
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
             : Stack(
           children: [
-            // Camera Preview
-            Positioned.fill(
-              child: CameraPreview(_cameraController!),
-            ),
+            Positioned.fill(child: CameraPreview(_cameraController!)),
 
-            // Pose overlay
             if (_poses != null && _poses!.isNotEmpty && _isDetectionActive)
               Positioned.fill(
                 child: CustomPaint(
@@ -385,11 +456,34 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                       _cameraController!.value.previewSize!.height,
                       _cameraController!.value.previewSize!.width,
                     ),
+                    isFrontCamera: _cameraController!.description.lensDirection == CameraLensDirection.front,
                   ),
                 ),
               ),
 
-            // Top bar
+            if (_isDetectionActive)
+              Positioned(
+                top: 200,
+                left: 20,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _feedbackColor.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _feedbackMessage,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
             Positioned(
               top: 0,
               left: 0,
@@ -480,7 +574,6 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
               ),
             ),
 
-            // Exercise info
             Positioned(
               top: 80,
               left: 20,
@@ -508,7 +601,6 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
               ),
             ),
 
-            // Rep counter
             if (!_isResting)
               Positioned(
                 bottom: 200,
@@ -534,7 +626,6 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                 ),
               ),
 
-            // Start Set button
             if (!_isResting)
               Positioned(
                 bottom: 80,
@@ -552,7 +643,6 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                 ),
               ),
 
-            // Manual count button
             Positioned(
               bottom: 20,
               left: 40,

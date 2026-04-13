@@ -4,10 +4,12 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 class PosePainter extends CustomPainter {
   final List<Pose> poses;
   final Size imageSize;
+  final bool isFrontCamera;
 
   PosePainter({
     required this.poses,
     required this.imageSize,
+    this.isFrontCamera = true,
   });
 
   @override
@@ -70,6 +72,13 @@ class PosePainter extends CustomPainter {
   }
 
   Offset _translatePoint(double x, double y, Size size) {
+    if (isFrontCamera) {
+      // Flip X coordinate for front camera mirroring
+      return Offset(
+        size.width - (x * size.width / imageSize.width),
+        y * size.height / imageSize.height,
+      );
+    }
     return Offset(
       x * size.width / imageSize.width,
       y * size.height / imageSize.height,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../models/workout_exercise_model.dart';
 
 class ExerciseDetailPage extends StatefulWidget {
@@ -16,6 +17,14 @@ class ExerciseDetailPage extends StatefulWidget {
 class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   late int sets;
   late int repeat;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<String> _fallbackImages = [
+    'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=800&q=80',
+    'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&q=80',
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+  ];
 
   @override
   void initState() {
@@ -25,13 +34,22 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   }
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final List<String> displayImages = widget.exercise.imageUrls.isNotEmpty 
+        ? widget.exercise.imageUrls 
+        : _fallbackImages;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Back Button
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -39,25 +57,17 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.black87,
-                      ),
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.arrow_back, color: Colors.black87),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    widget.exercise.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  Expanded(
+                    child: Text(
+                      widget.exercise.name,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -68,102 +78,103 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  // Video/Image Placeholder
                   Container(
                     height: 250,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFFB8D4E8),
-                          const Color(0xFF7BA5C9),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_circle_outline,
-                              size: 50,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            widget.exercise.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Sets Control
-                  _buildControlRow('Sets', sets, () {
-                    if (sets > 1) setState(() => sets--);
-                  }, () {
-                    setState(() => sets++);
-                  }),
-
-                  const SizedBox(height: 12),
-
-                  // Repeat Control
-                  _buildControlRow('Repeat', repeat, () {
-                    if (repeat > 1) setState(() => repeat--);
-                  }, () {
-                    setState(() => repeat++);
-                  }),
-
-                  const SizedBox(height: 20),
-
-                  // Instructions Section
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(20)),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
                       children: [
-                        const Text(
-                          'Instructions',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                        PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: (int page) => setState(() => _currentPage = page),
+                          itemCount: displayImages.length,
+                          itemBuilder: (context, index) {
+                            final path = displayImages[index];
+                            
+                            // Check if path is a URL or a Local File
+                            if (path.startsWith('http')) {
+                              return Image.network(
+                                path,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
+                                errorBuilder: (context, error, stack) => const Center(child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey)),
+                              );
+                            } else {
+                              return Image.file(
+                                File(path),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stack) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
+                              );
+                            }
+                          },
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.exercise.instructions,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[800],
-                            height: 1.5,
+                        
+                        if (_currentPage > 0)
+                          Positioned(
+                            left: 8, top: 0, bottom: 0,
+                            child: Center(
+                              child: Container(
+                                decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle),
+                                child: IconButton(
+                                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                                  onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        if (_currentPage < displayImages.length - 1)
+                          Positioned(
+                            right: 8, top: 0, bottom: 0,
+                            child: Center(
+                              child: Container(
+                                decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle),
+                                child: IconButton(
+                                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+                                  onPressed: () => _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        Positioned(
+                          bottom: 15, left: 0, right: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              displayImages.length,
+                              (index) => Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5)),
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
 
+                  const SizedBox(height: 20),
+
+                  _buildControlRow('Sets', sets, () { if (sets > 1) setState(() => sets--); }, () { setState(() => sets++); }),
+                  const SizedBox(height: 12),
+                  _buildControlRow('Repeat', repeat, () { if (repeat > 1) setState(() => repeat--); }, () { setState(() => repeat++); }),
+
+                  const SizedBox(height: 20),
+
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Instructions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        const SizedBox(height: 16),
+                        Text(widget.exercise.instructions, style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.5)),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -177,29 +188,16 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   Widget _buildControlRow(String label, int value, VoidCallback onMinus, VoidCallback onPlus) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-          ),
+          Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
           Row(
             children: [
               _buildControlButton(Icons.remove, onMinus),
               const SizedBox(width: 20),
-              Text(
-                '$value',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
+              Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
               const SizedBox(width: 20),
               _buildControlButton(Icons.add, onPlus),
             ],
@@ -213,12 +211,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          shape: BoxShape.circle,
-        ),
+        width: 32, height: 32,
+        decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
         child: Icon(icon, color: Colors.grey[700], size: 18),
       ),
     );
