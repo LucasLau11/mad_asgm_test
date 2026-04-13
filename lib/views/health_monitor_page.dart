@@ -165,10 +165,74 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                 const SizedBox(height: 12),
 
                 // water intake & weight cards
-                Row(
-                  children: [
-                    // water intake
-                    Expanded(
+                IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      // water intake
+                      Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                  
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Water intake',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                  
+                                const SizedBox(height: 6),
+                  
+                                Text(
+                                  _todayWaterTotal == 0 ? '0 L' : '${(_todayWaterTotal / 1000).toStringAsFixed(1)} L',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                  
+                                const SizedBox(height: 8),
+                  
+                                LinearProgressIndicator(
+                                  value: waterProgress,
+                                  backgroundColor: const Color(0xFFE8EAF6),
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9FA8DA)),
+                                  borderRadius: BorderRadius.circular(4),
+                                  minHeight: 6,
+                                ),
+                  
+                                const SizedBox(height: 6),
+                  
+                                Text(
+                                  '${(waterProgress * 100).toInt()}% of ${(_waterGoal / 1000).toStringAsFixed(1)}L goal',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ),
+                  
+                      const SizedBox(width: 12),
+                  
+                      // weight Card
+                      Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -182,105 +246,43 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                               ),
                             ],
                           ),
-
+                  
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Water intake',
+                                  'Weight',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey
+                                  )
+                              ),
+                  
+                              const SizedBox(height: 6),
+                  
+                              Text(
+                                _latestWeight == 0 ? '-- kg' : '${_latestWeight.toStringAsFixed(1)} kg',
+                                style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold
+                                ),
+                              ),
+                  
+                              const SizedBox(height: 6),
+                  
+                              const Text(
+                                'Latest log',
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-
-                              const SizedBox(height: 6),
-
-                              Text(
-                                _todayWaterTotal == 0 ? '0 L' : '${(_todayWaterTotal / 1000).toStringAsFixed(1)} L',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              LinearProgressIndicator(
-                                value: waterProgress,
-                                backgroundColor: const Color(0xFFE8EAF6),
-                                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9FA8DA)),
-                                borderRadius: BorderRadius.circular(4),
-                                minHeight: 6,
-                              ),
-
-                              const SizedBox(height: 6),
-
-                              Text(
-                                '${(waterProgress * 100).toInt()}% of ${(_waterGoal / 1000).toStringAsFixed(1)}L goal',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey
+                                    fontSize: 11,
+                                    color: Colors.grey
                                 ),
                               ),
                             ],
                           ),
                         ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // weight Card
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                                'Weight',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey
-                                )
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            Text(
-                              _latestWeight == 0 ? '-- kg' : '${_latestWeight.toStringAsFixed(1)} kg',
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold
-                              ),
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            const Text(
-                              'Latest log',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 20),
