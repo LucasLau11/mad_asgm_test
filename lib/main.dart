@@ -7,11 +7,14 @@
 //workout program module (TW)
 //flutter pub add google_ml_kit
 //flutter pub add image_picker
+
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'controllers/exercise_controller.dart';
 import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
+import 'views/login_screen.dart';
 
 // Your module views
 import 'views/exercise_list_view.dart';
@@ -50,33 +53,40 @@ class MyApp extends StatelessWidget {
             seedColor: const Color(0xFF7C6FDC),
           ),
         ),
-        home: const MainShell(),
+        home: const LoginScreen(),
       ),
     );
   }
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({Key? key}) : super(key: key);
+  final int initialIndex;
+  const MainShell({Key? key, this.initialIndex = 0}) : super(key: key);
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
-  // Keep pages alive when switching tabs
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
   static const List<Widget> _pages = [
+    HealthMonitorPage(),   //TODO jim eh page
+    WorkoutProgramPage(),
     ExerciseListView(),
-    WorkoutProgramPage(),     // Friend's workout module
-    ExerciseListView(),       // Your module
-    HealthMonitorPage(),      // Friend's health monitor module
+    HealthMonitorPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const FitPulseHeader(),
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
@@ -90,23 +100,60 @@ class _MainShellState extends State<MainShell> {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rounded_corner),
-            label: 'Jim',
+          BottomNavigationBarItem(icon: Icon(Icons.rounded_corner), label: 'Jim'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workout'),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Exercise'),
+          BottomNavigationBarItem(icon: Icon(Icons.monitor_heart), label: 'Health'),
+        ],
+      ),
+    );
+  }
+}
+
+class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
+  const FitPulseHeader({super.key});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      automaticallyImplyLeading: false,
+      titleSpacing: 16,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/images/fitpulse.png',
+            width: 42,
+            height: 42,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_run),
-            label: 'Exercise',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.monitor_heart),
-            label: 'Health',
+          const SizedBox(width: 10),
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ).createShader(bounds),
+            child: const Text(
+              'FitPulse',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: -0.3,
+              ),
+            ),
           ),
         ],
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(color: const Color(0xFFEEEEEE), height: 1),
       ),
     );
   }
