@@ -8,6 +8,8 @@ import '../models/user_model.dart';
 import '../models/water_intake_model.dart';
 import '../models/weight_model.dart';
 
+
+
 class DatabaseService {
   static final DatabaseService _databaseService = DatabaseService._internal();
   factory DatabaseService() => _databaseService;

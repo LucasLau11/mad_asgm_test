@@ -29,3 +29,4 @@ class UserModel {
     'createdOn': createdOn,
   };
 }
+

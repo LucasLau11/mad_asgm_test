@@ -86,7 +86,6 @@ class FitPulseTextField extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
 //  Primary Button
 // ─────────────────────────────────────────────
 class FitPulsePrimaryButton extends StatelessWidget {
