@@ -16,7 +16,7 @@ class DatabaseService {
   DatabaseService._internal();
   static Database? _database;
 
-  // ─── Singleton session: who is currently logged in ───────────────────────
+  //who is currently logged in
   static UserModel? _currentUser;
   static UserModel? get currentUser => _currentUser;
   static int get currentUserId {
@@ -24,7 +24,7 @@ class DatabaseService {
     return _currentUser!.id;
   }
 
-  // ─── Database instance ────────────────────────────────────────────────────
+  //Database instance
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -37,19 +37,19 @@ class DatabaseService {
     log('DB path: $path');
     return await openDatabase(
       path,
-      version: 2,                  // bumped from 1 → 2
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      onConfigure: _onConfigure,   // enables FK enforcement
+      onConfigure: _onConfigure,
     );
   }
 
-  // Enable foreign-key support (SQLite has it OFF by default)
+  // Enable foreign-key support (SQLite is OFF by default)
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
-  // ─── Create tables (fresh install) ───────────────────────────────────────
+  // Create tables (newly installed)
   Future<void> _onCreate(Database db, int version) async {
     // Users
     await db.execute('''
@@ -106,7 +106,7 @@ class DatabaseService {
     log('Weight table created');
   }
 
-  // ─── Migrate existing DB (version 1 → 2) ─────────────────────────────────
+  //Migrate existing DB (version 1 → 2)
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       log('Migrating DB from v$oldVersion to v$newVersion');
@@ -128,7 +128,7 @@ class DatabaseService {
         VALUES (1, 'guest', '', '')
       ''');
 
-      // Add user_id column to existing tables (defaults to 1 = guest)
+      // Add user_id column to existing tables
       await db.execute(
           'ALTER TABLE WaterIntake ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
       await db.execute(
@@ -140,18 +140,15 @@ class DatabaseService {
     }
   }
 
-  // ─── Password hashing helper ──────────────────────────────────────────────
+  // Password hashing
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     return sha256.convert(bytes).toString();
   }
 
-  // =========================================================================
-  // AUTH
-  // =========================================================================
+  // authentication
 
-  /// Register a new user. Returns the created [UserModel] or null if the
-  /// username is already taken.
+  // Register a new user. Returns the created [UserModel] or null if the username is already taken.
   Future<UserModel?> registerUser({
     required String username,
     required String password,
@@ -175,8 +172,7 @@ class DatabaseService {
     }
   }
 
-  /// Login with username + password. Returns [UserModel] on success or null
-  /// if credentials are wrong.
+  // Login with username + password. Returns [UserModel] on success or null if credentials are wrong.
   Future<UserModel?> loginUser({
     required String username,
     required String password,
@@ -195,7 +191,7 @@ class DatabaseService {
     return user;
   }
 
-  /// Clear the current session.
+  // Clear the current session.
   void logoutUser() {
     log('Logged out user: ${_currentUser?.username}');
     _currentUser = null;
@@ -208,10 +204,7 @@ class DatabaseService {
     return UserModel.fromJson(rows.first);
   }
 
-  // =========================================================================
-  // WATER INTAKE  (all queries scoped to currentUserId)
-  // =========================================================================
-
+  // WATER INTAKE
   Future<List<WaterIntakeModel>> getWaterRecords() async {
     final db = await database;
     final data = await db.query(
@@ -266,10 +259,7 @@ class DatabaseService {
     log('Deleted $count water record(s)');
   }
 
-  // =========================================================================
-  // HEART RATE  (all queries scoped to currentUserId)
-  // =========================================================================
-
+  // HEART RATE
   Future<List<HeartRateModel>> getHeartRateRecords() async {
     final db = await database;
     final data = await db.query(
@@ -323,10 +313,7 @@ class DatabaseService {
     log('Deleted $count heart rate record(s)');
   }
 
-  // =========================================================================
-  // WEIGHT  (all queries scoped to currentUserId)
-  // =========================================================================
-
+  // WEIGHT
   Future<List<WeightModel>> getWeightRecords() async {
     final db = await database;
     final data = await db.query(

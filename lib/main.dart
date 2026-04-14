@@ -132,7 +132,9 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
             width: 42,
             height: 42,
           ),
+
           const SizedBox(width: 10),
+
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],

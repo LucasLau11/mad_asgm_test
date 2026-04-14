@@ -53,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // ✅ Success — navigate to HealthMonitorPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainShell()),
@@ -78,20 +77,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 100,
                   height: 100,
                 ),
+
                 const SizedBox(height: 16),
+
                 Text(
                   'Login to Start Your Fitness Journey',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textDark),
                 ),
+
                 const SizedBox(height: 32),
+
                 FitPulseTextField(
                   controller: _usernameController,
                   hintText: 'Username',
                   prefixIcon: Icons.person_outline,
                   validator: (v) => (v == null || v.isEmpty) ? 'Please enter your username' : null,
                 ),
+
                 const SizedBox(height: 16),
+
                 FitPulseTextField(
                   controller: _passwordController,
                   hintText: 'Password',
@@ -106,6 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   validator: (v) => (v == null || v.isEmpty) ? 'Please enter your password' : null,
                 ),
+
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -114,8 +120,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500)),
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 FitPulsePrimaryButton(label: 'Login', isLoading: _isLoading, onPressed: _handleLogin),
+
                 const SizedBox(height: 24),
 
                 Row(
@@ -129,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 16),
               ],
             ),

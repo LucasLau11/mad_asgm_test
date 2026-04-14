@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-// ─────────────────────────────────────────────
-//  App Colors
-// ─────────────────────────────────────────────
 class AppColors {
   static const Color primary   = Color(0xFF2979FF);
   static const Color primaryDark = Color(0xFF1A5FD4);
@@ -13,9 +10,6 @@ class AppColors {
   static const Color bg        = Color(0xFFF4F7FC);
 }
 
-// ─────────────────────────────────────────────
-//  Reusable Text Field
-// ─────────────────────────────────────────────
 class FitPulseTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
@@ -86,8 +80,6 @@ class FitPulseTextField extends StatelessWidget {
   }
 }
 
-//  Primary Button
-// ─────────────────────────────────────────────
 class FitPulsePrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;

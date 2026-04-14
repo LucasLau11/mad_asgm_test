@@ -42,9 +42,9 @@ class _SignupScreenState extends State<SignupScreen> {
     if (RegExp(r'[^A-Za-z0-9]').hasMatch(v)) s += 0.25;
     String label; Color color;
     if (s <= 0.25)      { label = 'Weak';     color = Colors.red; }
-    else if (s <= 0.50) { label = 'Fair';     color = Colors.orange; }
+    else if (s <= 0.50) { label = 'Normal';     color = Colors.orange; }
     else if (s <= 0.75) { label = 'Good';     color = Colors.lightGreen; }
-    else                { label = 'Strong 💪'; color = AppColors.green; }
+    else                { label = 'Strong'; color = AppColors.green; }
     setState(() { _passwordStrength = s; _strengthLabel = label; _strengthColor = color; });
   }
 
@@ -75,14 +75,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Account created! Welcome, ${user.username} 🎉'),
+        content: Text('Account created! Welcome, ${user.username}'),
         backgroundColor: AppColors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
 
-    // ✅ Success — replace with your home route:
+    //Success
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
@@ -99,15 +99,19 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 16),
+
                 Image.asset(
                   'assets/images/fitpulse.png',
                   width: 100,
                   height: 100,
                 ),
+
                 const SizedBox(height: 16),
+
                 Text('Create Your FitPulse Account',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+
                 const SizedBox(height: 32),
 
                 // Username
@@ -117,6 +121,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   prefixIcon: Icons.person_outline,
                   validator: (v) => (v == null || v.isEmpty) ? 'Please enter a username' : null,
                 ),
+
                 const SizedBox(height: 16),
 
                 // Email
@@ -131,6 +136,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     return null;
                   },
                 ),
+
                 const SizedBox(height: 16),
 
                 // Password
@@ -148,9 +154,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Please enter a password';
                     if (v.length < 8) return 'Password must be at least 8 characters';
+                    if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Must contain at least one capital letter';
+                    if (!RegExp(r'[0-9]').hasMatch(v)) return 'Must contain at least one number';
+                    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(v)) return 'Must contain at least one symbol';
                     return null;
                   },
                 ),
+
                 if (_passwordStrength > 0) ...[
                   const SizedBox(height: 8),
                   Row(
@@ -166,12 +176,15 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(width: 10),
+
                       Text(_strengthLabel,
                           style: TextStyle(fontSize: 11, color: _strengthColor, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
+
                 const SizedBox(height: 16),
 
                 // Confirm Password
@@ -194,23 +207,30 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 24),
 
                 FitPulsePrimaryButton(label: 'Create Account', isLoading: _isLoading, onPressed: _handleSignup),
+
                 const SizedBox(height: 24),
 
+                //Terms & service statement
                 RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     children: [
                       const TextSpan(text: 'By signing up you agree to our '),
+
                       TextSpan(text: 'Terms of Service',
                           style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+
                       const TextSpan(text: ' and '),
+
                       TextSpan(text: 'Privacy Policy',
                           style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -224,6 +244,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 16),
               ],
             ),
