@@ -26,16 +26,17 @@ class WorkoutDatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Bumped version to add userId
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Create Workouts table
     await db.execute('''
       CREATE TABLE workouts (
         id TEXT PRIMARY KEY,
+        userId INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT,
         exerciseCount INTEGER,
@@ -45,7 +46,6 @@ class WorkoutDatabaseService {
       )
     ''');
 
-    // Create Exercises table
     await db.execute('''
       CREATE TABLE workout_exercises (
         id TEXT PRIMARY KEY,
@@ -60,7 +60,14 @@ class WorkoutDatabaseService {
     ''');
   }
 
-  // --- Workout CRUD ---
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add userId column to existing workouts table
+      await db.execute('ALTER TABLE workouts ADD COLUMN userId INTEGER DEFAULT 0');
+    }
+  }
+
+  // --- Workout CRUD (Updated with userId) ---
 
   Future<void> insertWorkout(Workout workout) async {
     final db = await database;
@@ -71,34 +78,34 @@ class WorkoutDatabaseService {
     );
   }
 
+  Future<List<Workout>> getWorkoutsByUserId(int userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'workouts',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+    return List.generate(maps.length, (i) => Workout.fromMap(maps[i]));
+  }
+
+  // Still keep getAllWorkouts for admin/debug if needed, 
+  // but most pages will use getWorkoutsByUserId
   Future<List<Workout>> getAllWorkouts() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('workouts');
-    return List.generate(maps.length, (i) {
-      return Workout.fromMap(maps[i]);
-    });
+    return List.generate(maps.length, (i) => Workout.fromMap(maps[i]));
   }
 
   Future<void> deleteWorkout(String id) async {
     final db = await database;
-    await db.delete(
-      'workouts',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    // Cascade delete exercises
-    await db.delete(
-      'workout_exercises',
-      where: 'workoutId = ?',
-      whereArgs: [id],
-    );
+    await db.delete('workouts', where: 'id = ?', whereArgs: [id]);
+    await db.delete('workout_exercises', where: 'workoutId = ?', whereArgs: [id]);
   }
 
   // --- Exercise CRUD ---
 
   Future<void> insertExercise(Exercise exercise) async {
     final db = await database;
-    // Map conversion for JSON image_urls
     final data = exercise.toMap();
     data['image_urls'] = jsonEncode(exercise.imageUrls);
 
@@ -119,7 +126,6 @@ class WorkoutDatabaseService {
 
     return List.generate(maps.length, (i) {
       var map = Map<String, dynamic>.from(maps[i]);
-      // Decode JSON string back to List<String>
       if (map['image_urls'] != null) {
         map['image_urls'] = jsonDecode(map['image_urls']);
       } else {
@@ -131,10 +137,6 @@ class WorkoutDatabaseService {
 
   Future<void> deleteAllExercisesForWorkout(String workoutId) async {
     final db = await database;
-    await db.delete(
-      'workout_exercises',
-      where: 'workoutId = ?',
-      whereArgs: [workoutId],
-    );
+    await db.delete('workout_exercises', where: 'workoutId = ?', whereArgs: [workoutId]);
   }
 }

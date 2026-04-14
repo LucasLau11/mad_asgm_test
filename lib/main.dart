@@ -16,10 +16,10 @@ import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
 import 'views/login_screen.dart';
 
-// Your module views
+
 import 'views/exercise_list_view.dart';
 
-// Friend's module views
+
 import 'views/workout_program_page.dart';
 import 'views/health_monitor_page.dart';
 

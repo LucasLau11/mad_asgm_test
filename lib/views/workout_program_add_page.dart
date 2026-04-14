@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../controllers/workout_controller.dart';
+import '../controllers/database_service.dart';
 import '../models/workout_model.dart';
 import '../models/workout_exercise_model.dart';
 
@@ -19,7 +20,6 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   final Uuid _uuid = const Uuid();
   final ImagePicker _picker = ImagePicker();
 
-  // Form fields
   final TextEditingController _programNameController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
 
@@ -29,31 +29,50 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   final List<String> _goals = ['Strength', 'Cardio', 'Flexibility', 'Weight Loss', 'Muscle Gain'];
   final List<String> _difficulties = ['Beginner', 'Intermediate', 'Advanced'];
 
-  // Exercise library mapping for auto-select
   final Map<String, String> _exerciseToBodyPart = {
     'Squat': 'Leg',
     'Lunges': 'Leg',
-    'Leg Press': 'Leg',
     'Push-ups': 'Chest',
     'Bench Press': 'Chest',
     'Bicep Curls': 'Arm',
-    'Tricep Dips': 'Arm',
   };
 
-  // Difficulty settings: Difficulty -> {sets, repeat}
   final Map<String, Map<String, int>> _difficultySettings = {
     'Beginner': {'sets': 2, 'repeat': 10},
     'Intermediate': {'sets': 3, 'repeat': 12},
     'Advanced': {'sets': 4, 'repeat': 15},
   };
 
-  // Exercise fields
   List<ExerciseForm> _exercises = [];
 
   @override
   void initState() {
     super.initState();
     _addExercise();
+  }
+
+  void _syncMetadata() {
+    if (_exercises.isEmpty) return;
+
+    int totalSets = _exercises.fold(0, (sum, ex) => sum + ex.sets);
+    int estimatedDuration = (totalSets * 3) + 5;
+    _durationController.text = estimatedDuration.toString();
+
+    double avgSets = totalSets / _exercises.length;
+    String newDifficulty;
+    if (avgSets <= 2.2) {
+      newDifficulty = 'Beginner';
+    } else if (avgSets <= 3.2) {
+      newDifficulty = 'Intermediate';
+    } else {
+      newDifficulty = 'Advanced';
+    }
+
+    if (_selectedDifficulty != newDifficulty) {
+      setState(() {
+        _selectedDifficulty = newDifficulty;
+      });
+    }
   }
 
   void _addExercise() {
@@ -68,16 +87,19 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
         instructionsController: TextEditingController(),
       ));
     });
+    _syncMetadata();
   }
 
-  void _updateAllExerciseDifficulty() {
-    final settings = _difficultySettings[_selectedDifficulty]!;
+  void _updateAllExerciseDifficulty(String difficulty) {
+    final settings = _difficultySettings[difficulty]!;
     setState(() {
+      _selectedDifficulty = difficulty;
       for (var exercise in _exercises) {
         exercise.sets = settings['sets']!;
         exercise.repeat = settings['repeat']!;
       }
     });
+    _syncMetadata();
   }
 
   void _removeExercise(int index) {
@@ -85,19 +107,29 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
       _exercises[index].dispose();
       _exercises.removeAt(index);
     });
+    _syncMetadata();
   }
 
   Future<void> _pickImages(int index) async {
     try {
       final List<XFile>? pickedFiles = await _picker.pickMultiImage();
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        setState(() {
-          for (var file in pickedFiles) {
+        for (var file in pickedFiles) {
+          final fileSize = await File(file.path).length();
+          if (fileSize > 2 * 1024 * 1024) { // 2MB Limit
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Image size must be less than 2MB'), backgroundColor: Colors.orange),
+              );
+            }
+            continue;
+          }
+          setState(() {
             if (_exercises[index].imageUrls.length < 5) {
               _exercises[index].imageUrls.add(file.path);
             }
-          }
-        });
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error picking images: $e');
@@ -122,34 +154,55 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
 
   Future<void> _saveWorkout() async {
     if (_formKey.currentState!.validate()) {
-      final workoutId = _uuid.v4();
-      final workout = Workout(
-        id: workoutId,
-        name: _programNameController.text,
-        description: '${_exercises.length} exercises - ${_durationController.text} min',
-        exerciseCount: _exercises.length,
-        durationMinutes: int.tryParse(_durationController.text) ?? 30,
-        difficulty: _selectedDifficulty,
-        color: '0xFFDAD9FF', // Default purple color
-      );
+      /*// Custom validation for exercises
+      for (var ex in _exercises) {
+        if (ex.imageUrls.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please add at least one image per exercise'), backgroundColor: Colors.red),
+          );
+          return;
+        }
+      }*/
 
-      final exerciseModels = _exercises.map((f) => Exercise(
-        id: _uuid.v4(),
-        workoutId: workoutId,
-        name: f.exerciseNameController.text,
-        sets: f.sets,
-        reps: f.repeat,
-        instructions: f.instructionsController.text,
-        imageUrls: f.imageUrls,
-      )).toList();
+      try {
+        final workoutId = _uuid.v4();
+        final currentUserId = DatabaseService.currentUserId;
 
-      await _controller.addWorkout(workout, exerciseModels);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Workout program added successfully!'), backgroundColor: Colors.green),
+        final workout = Workout(
+          id: workoutId,
+          userId: currentUserId,
+          name: _programNameController.text,
+          description: '${_exercises.length} exercises - ${_durationController.text} min',
+          exerciseCount: _exercises.length,
+          durationMinutes: int.tryParse(_durationController.text) ?? 30,
+          difficulty: _selectedDifficulty,
+          color: '0xFFDAD9FF', 
         );
-        Navigator.pop(context);
+
+        final exerciseModels = _exercises.map((f) => Exercise(
+          id: _uuid.v4(),
+          workoutId: workoutId,
+          name: f.exerciseNameController.text,
+          sets: f.sets,
+          reps: f.repeat,
+          instructions: f.instructionsController.text,
+          imageUrls: f.imageUrls,
+        )).toList();
+
+        await _controller.addWorkout(workout, exerciseModels);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Workout program added successfully!'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -187,8 +240,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                       child: Row(
                         children: [
                           Container(
-                            width: 50,
-                            height: 50,
+                            width: 50, height: 50,
                             decoration: BoxDecoration(color: const Color(0xFF9FA8DA), borderRadius: BorderRadius.circular(12)),
                             child: const Icon(Icons.add, color: Colors.white, size: 28),
                           ),
@@ -220,19 +272,14 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                           _buildLabel('Goal'),
                           _buildDropdown(value: _selectedGoal, items: _goals, onChanged: (value) => setState(() => _selectedGoal = value!)),
                           const SizedBox(height: 16),
-                          _buildLabel('Durations'),
-                          _buildTextField(controller: _durationController, hintText: '30 mins', keyboardType: TextInputType.number),
+                          _buildLabel('Durations (Estimated in mins)'),
+                          _buildTextField(controller: _durationController, hintText: 'Auto-calculated', keyboardType: TextInputType.number),
                           const SizedBox(height: 16),
                           _buildLabel('Difficulty'),
                           _buildDropdown(
                             value: _selectedDifficulty,
                             items: _difficulties,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedDifficulty = value!;
-                                _updateAllExerciseDifficulty();
-                              });
-                            },
+                            onChanged: (value) => _updateAllExerciseDifficulty(value!),
                           ),
                           const SizedBox(height: 16),
                           _buildLabel('Preview Image'),
@@ -374,7 +421,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
           _buildDropdown(
             value: exercise.selectedBodyPart,
             items: bodyParts,
-            enabled: false, // Match edit page logic
+            enabled: false,
             onChanged: (value) => setState(() => exercise.selectedBodyPart = value!),
           ),
           const SizedBox(height: 16),
@@ -430,7 +477,11 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLabel('Sets'),
-                    _buildCounterField(value: exercise.sets, onDecrement: () { if (exercise.sets > 1) setState(() => exercise.sets--); }, onIncrement: () => setState(() => exercise.sets++)),
+                    _buildCounterField(
+                      value: exercise.sets,
+                      onDecrement: () { if (exercise.sets > 1) { setState(() => exercise.sets--); _syncMetadata(); } },
+                      onIncrement: () { setState(() => exercise.sets++); _syncMetadata(); },
+                    ),
                   ],
                 ),
               ),
@@ -440,7 +491,11 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLabel('Repeat'),
-                    _buildCounterField(value: exercise.repeat, onDecrement: () { if (exercise.repeat > 1) setState(() => exercise.repeat--); }, onIncrement: () => setState(() => exercise.repeat++)),
+                    _buildCounterField(
+                      value: exercise.repeat,
+                      onDecrement: () { if (exercise.repeat > 1) { setState(() => exercise.repeat--); _syncMetadata(); } },
+                      onIncrement: () { setState(() => exercise.repeat++); _syncMetadata(); },
+                    ),
                   ],
                 ),
               ),

@@ -225,12 +225,11 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     bool hasValidSide = false;
 
     // Use whichever side has better visibility (likelihood)
-    if (lKnee != null && lHip != null && lAnkle != null && 
+    if (lKnee != null && lHip != null && lAnkle != null &&
         lKnee.likelihood > _confidenceThreshold) {
       currentKneeAngle = _calculateAngle(lHip, lKnee, lAnkle);
       hasValidSide = true;
-    } else if (rKnee != null && rHip != null && rAnkle != null && 
-               rKnee.likelihood > _confidenceThreshold) {
+    } else if (rKnee != null && rHip != null && rAnkle != null && rKnee.likelihood > _confidenceThreshold) {
       currentKneeAngle = _calculateAngle(rHip, rKnee, rAnkle);
       hasValidSide = true;
     }
@@ -263,9 +262,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
         _updateFeedback('Great! ${_repCount}/${currentExercise.reps}', Colors.green);
       }
     } else {
-      if (!_isInEndPosition) {
-        _updateFeedback('Go lower...', Colors.yellow);
-      }
+      if (!_isInEndPosition) _updateFeedback('Go lower...', Colors.yellow);
     }
   }
 
@@ -346,55 +343,40 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     _showRestSnackbar();
 
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      setState(() {
-        _restTimeRemaining--;
-      });
-
-      if (_restTimeRemaining <= 0) {
-        _endRestPeriod();
-      }
+      if (!mounted) { timer.cancel(); return; }
+      setState(() => _restTimeRemaining--);
+      _showRestSnackbar(); // Refresh snackbar with new time
+      if (_restTimeRemaining <= 0) _endRestPeriod();
     });
   }
 
   void _endRestPeriod() {
     _restTimer?.cancel();
-    setState(() {
-      _isResting = false;
-    });
+    setState(() => _isResting = false);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
   }
 
   void _showRestSnackbar() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Rest Time', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text('${_restTimeRemaining}s', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('${_restTimeRemaining}s', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
-        duration: Duration(seconds: _restTimeRemaining),
+        duration: const Duration(hours: 1), // Manual dismiss
         backgroundColor: const Color(0xFF9FA8DA),
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Skip',
-          textColor: Colors.white,
-          onPressed: _endRestPeriod,
-        ),
+        action: SnackBarAction(label: 'Skip', textColor: Colors.white, onPressed: _endRestPeriod),
       ),
     );
   }
 
   void _showCompletionSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 2)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 2)));
   }
 
   void _completeWorkout() {
@@ -463,9 +445,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
 
             if (_isDetectionActive)
               Positioned(
-                top: 200,
-                left: 20,
-                right: 20,
+                top: 200, left: 20, right: 20,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
@@ -485,9 +465,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
               ),
 
             Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
+              top: 0, left: 0, right: 0,
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -526,6 +504,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                           ),
                         );
                       },
+                      //onTap: () => Navigator.pop(context),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
@@ -573,10 +552,8 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                 ),
               ),
             ),
-
             Positioned(
-              top: 80,
-              left: 20,
+              top: 80, left: 20,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -600,12 +577,9 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                 ],
               ),
             ),
-
             if (!_isResting)
               Positioned(
-                bottom: 200,
-                left: 0,
-                right: 0,
+                bottom: 200, left: 0, right: 0,
                 child: Center(
                   child: Container(
                     width: 150,

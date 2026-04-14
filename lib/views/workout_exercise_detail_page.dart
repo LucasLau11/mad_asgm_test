@@ -157,9 +157,9 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
                   const SizedBox(height: 20),
 
-                  _buildControlRow('Sets', sets, () { if (sets > 1) setState(() => sets--); }, () { setState(() => sets++); }),
+                  _buildControlRow('Sets', sets),
                   const SizedBox(height: 12),
-                  _buildControlRow('Repeat', repeat, () { if (repeat > 1) setState(() => repeat--); }, () { setState(() => repeat++); }),
+                  _buildControlRow('Repeat', repeat),
 
                   const SizedBox(height: 20),
 
@@ -185,7 +185,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     );
   }
 
-  Widget _buildControlRow(String label, int value, VoidCallback onMinus, VoidCallback onPlus) {
+  Widget _buildControlRow(String label, int value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
@@ -193,27 +193,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
-          Row(
-            children: [
-              _buildControlButton(Icons.remove, onMinus),
-              const SizedBox(width: 20),
-              Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(width: 20),
-              _buildControlButton(Icons.add, onPlus),
-            ],
-          ),
+          Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton(IconData icon, VoidCallback onPressed) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
-        child: Icon(icon, color: Colors.grey[700], size: 18),
       ),
     );
   }

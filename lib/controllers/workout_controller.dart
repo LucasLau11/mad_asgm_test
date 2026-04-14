@@ -16,6 +16,10 @@ class WorkoutController {
     return await _dbService.getAllWorkouts();
   }
 
+  Future<List<Workout>> getWorkoutsByUserId(int userId) async {
+    return await _dbService.getWorkoutsByUserId(userId);
+  }
+
   Future<Workout?> getWorkoutById(String id) async {
     final workouts = await _dbService.getAllWorkouts();
     try {
@@ -59,6 +63,7 @@ class WorkoutController {
     if (workouts.isEmpty) {
       final initialWorkout = Workout(
         id: '1',
+        userId: 1, // Added missing userId for seed data
         name: 'Leg Workout',
         description: '4 exercise - 45 min',
         exerciseCount: 1,

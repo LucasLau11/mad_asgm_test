@@ -156,33 +156,42 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
   Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
-      final updatedWorkout = Workout(
-        id: widget.workout.id,
-        name: _programNameController.text,
-        description: '${_exercises.length} exercises - ${_durationController.text} min',
-        exerciseCount: _exercises.length,
-        durationMinutes: int.parse(_durationController.text),
-        difficulty: _selectedDifficulty,
-        color: widget.workout.color,
-      );
-
-      final updatedExercises = _exercises.map((f) => Exercise(
-        id: f.exerciseId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        workoutId: widget.workout.id,
-        name: f.exerciseNameController.text,
-        sets: f.sets,
-        reps: f.repeat,
-        instructions: f.instructionsController.text,
-        imageUrls: f.imageUrls,
-      )).toList();
-
-      await _controller.updateWorkout(updatedWorkout, updatedExercises);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Workout updated successfully!'), backgroundColor: Colors.green),
+      try {
+        final updatedWorkout = Workout(
+          id: widget.workout.id,
+          userId: widget.workout.userId, // FIXED: Added missing userId
+          name: _programNameController.text,
+          description: '${_exercises.length} exercises - ${_durationController.text} min',
+          exerciseCount: _exercises.length,
+          durationMinutes: int.tryParse(_durationController.text) ?? 30,
+          difficulty: _selectedDifficulty,
+          color: widget.workout.color,
         );
-        Navigator.pop(context);
+
+        final updatedExercises = _exercises.map((f) => Exercise(
+          id: f.exerciseId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          workoutId: widget.workout.id,
+          name: f.exerciseNameController.text,
+          sets: f.sets,
+          reps: f.repeat,
+          instructions: f.instructionsController.text,
+          imageUrls: f.imageUrls,
+        )).toList();
+
+        await _controller.updateWorkout(updatedWorkout, updatedExercises);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Workout updated successfully!'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }

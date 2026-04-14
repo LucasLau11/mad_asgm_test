@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/workout_controller.dart';
+import '../controllers/database_service.dart';
 import '../models/workout_model.dart';
 import 'workout_program_edit_page.dart';
 
@@ -22,12 +23,25 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
   }
 
   Future<void> _loadWorkouts() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final workouts = await _controller.getAllWorkouts();
-    setState(() {
-      _workouts = workouts;
-      _isLoading = false;
-    });
+    
+    try {
+      final currentUserId = DatabaseService.currentUserId;
+      final workouts = await _controller.getWorkoutsByUserId(currentUserId);
+      
+      if (mounted) {
+        setState(() {
+          _workouts = workouts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading workouts: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -37,7 +51,6 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Row(
@@ -52,7 +65,6 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
               ),
             ),
 
-            // Workouts List Area
             Expanded(
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/workout_controller.dart';
+import '../controllers/database_service.dart';
 import '../models/workout_model.dart';
 import 'workout_program_add_page.dart';
 import 'manage_workout_page.dart';
@@ -29,19 +30,32 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   }
 
   Future<void> _initialLoad() async {
-    // Seed data if first time opening
     await _controller.seedDatabaseIfNeeded();
     await _loadWorkouts();
   }
 
   Future<void> _loadWorkouts() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final workouts = await _controller.getAllWorkouts();
-    setState(() {
-      _allWorkouts = workouts;
-      _filteredWorkouts = _allWorkouts;
-      _isLoading = false;
-    });
+    
+    try {
+      // FIXED: Only load workouts for the currently logged-in user
+      final currentUserId = DatabaseService.currentUserId;
+      final workouts = await _controller.getWorkoutsByUserId(currentUserId);
+      
+      if (mounted) {
+        setState(() {
+          _allWorkouts = workouts;
+          _filteredWorkouts = _allWorkouts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading workouts: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -81,24 +95,11 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(color: Colors.blue[700], shape: BoxShape.circle),
-                    child: const Icon(Icons.favorite, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text('FitPulse', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1976D2))),
-                ],
-              ),
+
             ),
 
-            // Title and Date
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(

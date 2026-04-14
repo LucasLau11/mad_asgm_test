@@ -1,14 +1,16 @@
 class Workout {
   final String id;
+  final int userId; // Link to UserModel.id
   final String name;
   final String description;
   final int exerciseCount;
   final int durationMinutes;
   final String difficulty;
-  final String color; // Store color as hex string
+  final String color;
 
   Workout({
     required this.id,
+    required this.userId,
     required this.name,
     required this.description,
     required this.exerciseCount,
@@ -17,10 +19,10 @@ class Workout {
     required this.color,
   });
 
-  // Convert to Map for database
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'userId': userId,
       'name': name,
       'description': description,
       'exerciseCount': exerciseCount,
@@ -30,10 +32,10 @@ class Workout {
     };
   }
 
-  // Create from Map
   factory Workout.fromMap(Map<String, dynamic> map) {
     return Workout(
       id: map['id'],
+      userId: map['userId'],
       name: map['name'],
       description: map['description'],
       exerciseCount: map['exerciseCount'],
