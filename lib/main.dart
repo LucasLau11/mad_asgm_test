@@ -8,22 +8,31 @@
 //flutter pub add google_ml_kit
 //flutter pub add image_picker
 
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'controllers/exercise_controller.dart';
 import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
+import 'models/analytics_app_state.dart';
 import 'views/login_screen.dart';
 
-
+// Your friend's module YP || YH || TW
 import 'views/exercise_list_view.dart';
-
-
 import 'views/workout_program_page.dart';
 import 'views/health_monitor_page.dart';
 
-void main() {
+// Analytics module (integrated)
+import 'views/analytics_view.dart';
+
+// Global analytics state — initialized before runApp
+final AnalyticsAppState analyticsAppState = AnalyticsAppState();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load analytics/goals data from storage before showing UI
+  await analyticsAppState.loadFromStorage();
+
   runApp(const MyApp());
 }
 
@@ -37,23 +46,66 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExerciseController()),
         ChangeNotifierProvider(create: (_) => PedometerController()),
         ChangeNotifierProvider(create: (_) => LocationController()),
+        // Analytics module state — provides AnalyticsAppState to the whole tree
+        ChangeNotifierProvider<AnalyticsAppState>.value(value: analyticsAppState),
       ],
-      child: MaterialApp(
-        title: 'Fitness Tracker',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.purple,
-          scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-          fontFamily: 'SF Pro Display',
-          textTheme: const TextTheme(
-            bodyLarge: TextStyle(fontSize: 16, color: Colors.black87),
-            bodyMedium: TextStyle(fontSize: 14, color: Colors.black87),
-          ),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF7C6FDC),
-          ),
-        ),
-        home: const LoginScreen(),
+      child: Consumer<AnalyticsAppState>(
+        // Rebuild MaterialApp when dark mode changes in analytics module
+        builder: (context, analyticsState, _) {
+          return MaterialApp(
+            title: 'Fitness Tracker',
+            debugShowCheckedModeBanner: false,
+            themeMode: analyticsState.darkMode ? ThemeMode.dark : ThemeMode.light,
+            theme: ThemeData(
+              brightness: Brightness.light,
+              primarySwatch: Colors.purple,
+              scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+              fontFamily: 'SF Pro Display',
+              textTheme: const TextTheme(
+                bodyLarge: TextStyle(fontSize: 16, color: Colors.black87),
+                bodyMedium: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF7C6FDC),
+              ),
+              switchTheme: SwitchThemeData(
+                thumbColor: WidgetStateProperty.all(Colors.white),
+                trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                      ? const Color(0xFF4CD964)
+                      : Colors.grey.shade400,
+                ),
+                trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+              ),
+            ),
+            darkTheme: ThemeData(
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: const Color(0xFF121212),
+              primarySwatch: Colors.purple,
+              fontFamily: 'SF Pro Display',
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF121212),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              cardColor: const Color(0xFF1E1E1E),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF7C6FDC),
+                brightness: Brightness.dark,
+              ),
+              switchTheme: SwitchThemeData(
+                thumbColor: WidgetStateProperty.all(Colors.white),
+                trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                      ? const Color(0xFF4CD964)
+                      : Colors.grey.shade600,
+                ),
+                trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+              ),
+            ),
+            home: const LoginScreen(),
+          );
+        },
       ),
     );
   }
@@ -77,7 +129,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   static const List<Widget> _pages = [
-    HealthMonitorPage(),   //TODO jim eh page
+    AnalyticsView(),      // Analytics & Goals module (replaces Jim placeholder)
     WorkoutProgramPage(),
     ExerciseListView(),
     HealthMonitorPage(),
@@ -100,7 +152,7 @@ class _MainShellState extends State<MainShell> {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.rounded_corner), label: 'Jim'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Analytics'),
           BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workout'),
           BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Exercise'),
           BottomNavigationBarItem(icon: Icon(Icons.monitor_heart), label: 'Health'),
@@ -132,9 +184,7 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
             width: 42,
             height: 42,
           ),
-
           const SizedBox(width: 10),
-
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
