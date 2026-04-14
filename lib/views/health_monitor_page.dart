@@ -504,7 +504,7 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
     );
   }
 
-  // Each row in Today's Log — tapping it goes to the edit page for that record
+  //each row of today's log
   Widget _buildLogItem(Map<String, dynamic> item) {
     String type = item['type'];
     String title = '';
