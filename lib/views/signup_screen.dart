@@ -117,6 +117,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Username
                 FitPulseTextField(
                   controller: _usernameController,
+                  keyboardType: TextInputType.name,
                   hintText: 'Username',
                   prefixIcon: Icons.person_outline,
                   validator: (v) => (v == null || v.isEmpty) ? 'Please enter a username' : null,

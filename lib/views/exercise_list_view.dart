@@ -19,17 +19,19 @@ class ExerciseListView extends StatefulWidget {
 class _ExerciseListViewState extends State<ExerciseListView> {
   Timer? _bannerRefreshTimer;
 
+  PedometerController? _pedometer;
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pedometer =
+      _pedometer =
       Provider.of<PedometerController>(context, listen: false);
 
       // Wire the auto-save callback BEFORE starting detection
-      pedometer.onAutoSave = _handleAutoSave;
-      pedometer.startAutoDetect();
+      _pedometer!.onAutoSave = _handleAutoSave;
+      _pedometer!.startAutoDetect();
     });
 
     // Redraw every 30 s so "X min" in the banner stays current
@@ -41,10 +43,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
   @override
   void dispose() {
     _bannerRefreshTimer?.cancel();
-    // Clear callback to avoid calling into a disposed widget
-    final pedometer =
-    Provider.of<PedometerController>(context, listen: false);
-    pedometer.onAutoSave = null;
+    _pedometer?.onAutoSave = null;
     super.dispose();
   }
 
