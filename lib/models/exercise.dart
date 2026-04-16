@@ -129,6 +129,7 @@ class Exercise {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      // 'user_id': 0,  // ← placeholder; overwritten by DatabaseService
       'title': title,
       'type': type.index,
       'startTime': startTime.toIso8601String(),
@@ -146,6 +147,7 @@ class Exercise {
       'isAutoDetected': isAutoDetected ? 1 : 0,
     };
   }
+  // (user_id is read by the DB layer, not the model)
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
     List<Map<String, double>>? parseRoutePoints(dynamic routeData) {
