@@ -12,6 +12,7 @@ import '../controllers/location_controller.dart';
 import '../models/exercise.dart';
 import '../services/exercise_notification_service.dart';
 
+
 class LiveExerciseView extends StatefulWidget {
   final ExerciseType exerciseType;
   final int? stepGoal;
@@ -409,7 +410,19 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+
+    return PopScope(
+      canPop: false,                           // ← always intercept
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_startTime != null) {              // workout started (tracking OR paused)
+          _showExitConfirmation();
+        } else {
+          Navigator.pop(context);              // not started yet, just leave
+        }
+      },
+
+    child: Scaffold(
       // White background removes the black gap between map and stats panel
       backgroundColor: Colors.white,
       body: Consumer3<PedometerController, LocationController,
@@ -578,7 +591,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                           left: 16,
                           child: GestureDetector(
                             onTap: () {
-                              if (_isTracking) {
+                              if (_startTime != null) {  // ← covers both tracking AND paused
                                 _showExitConfirmation();
                               } else {
                                 Navigator.pop(context);
@@ -678,11 +691,13 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                 // outside the flex:2 budget. Use MainAxisAlignment
                 // .spaceBetween on the Column instead, and shrink padding
                 // + font sizes slightly so everything fits comfortably.
+
                 Expanded(
                   flex: 2,
                   child: Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                    child: SingleChildScrollView(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -774,6 +789,9 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                         ),
                       ],
                     ),
+
+                    ),
+
                   ),
                 ),
               ],
@@ -781,6 +799,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
           );
         },
       ),
+    ),
     );
   }
 
