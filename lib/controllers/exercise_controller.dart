@@ -51,6 +51,13 @@ class ExerciseController extends ChangeNotifier {
     loadExercises();
   }
 
+  // Add this method to ExerciseController class
+  Future<void> reloadForCurrentUser() async {
+    _exercises = [];
+    notifyListeners();
+    await loadExercises();
+  }
+
   // Load all exercises from database
   Future<void> loadExercises() async {
     _isLoading = true;

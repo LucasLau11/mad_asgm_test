@@ -3,6 +3,8 @@ import 'package:mad_asgm/main.dart';
 import '../controllers/database_service.dart';
 import '../widgets/shared_widgets.dart';
 import 'signup_screen.dart';
+import 'package:provider/provider.dart';
+import '../controllers/exercise_controller.dart';
 
 
 
@@ -29,6 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+
+  // --------------- some change
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -53,11 +57,49 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // ← Reload exercises scoped to the newly logged-in user
+    await Provider.of<ExerciseController>(context, listen: false)
+        .reloadForCurrentUser();
+
+    if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainShell()),
     );
   }
+
+  // void _handleLogin() async {
+  //   if (!_formKey.currentState!.validate()) return;
+  //   setState(() => _isLoading = true);
+  //
+  //   final user = await _dbService.loginUser(
+  //     username: _usernameController.text,
+  //     password: _passwordController.text,
+  //   );
+  //
+  //   setState(() => _isLoading = false);
+  //   if (!mounted) return;
+  //
+  //   if (user == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: const Text('Invalid username or password.'),
+  //         backgroundColor: Colors.redAccent,
+  //         behavior: SnackBarBehavior.floating,
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //       ),
+  //     );
+  //     return;
+  //   }
+  //
+  //   Navigator.pushReplacement(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => const MainShell()),
+  //   );
+  // }
+
+  // -------------- some change
 
   @override
   Widget build(BuildContext context) {
