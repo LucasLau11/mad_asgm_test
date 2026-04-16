@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mad_asgm/views/login_screen.dart';
 import 'package:provider/provider.dart';
+import '../controllers/database_service.dart';
 import '../models/analytics_app_state.dart';
-import '../models/analytics_profile_model.dart';
 import '../models/analytics_profile_model.dart';
 import '../controllers/analytics_profile_controller.dart';
 import 'analytics_settings_view.dart';
@@ -97,7 +98,12 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
           const SizedBox(height: 12),
           _menuButton('Logout', isDark, onTap: () async {
             await _controller.logout();
-            // TODO: navigate to login screen
+            DatabaseService().logoutUser();
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false, // removes all previous routes so back button won't work
+            );
           }),
         ],
       ),
