@@ -30,7 +30,7 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   }
 
   Future<void> _initialLoad() async {
-    await _controller.seedDatabaseIfNeeded();
+    //await _controller.seedDatabaseIfNeeded();
     await _loadWorkouts();
   }
 
@@ -105,7 +105,7 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Workout Program', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const Text('Workout Program', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 8),
                   Text(_getFormattedDate(), style: const TextStyle(fontSize: 16, color: Colors.black54)),
                 ],

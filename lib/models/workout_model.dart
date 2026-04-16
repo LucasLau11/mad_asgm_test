@@ -7,6 +7,7 @@ class Workout {
   final int durationMinutes;
   final String difficulty;
   final String color;
+ // final String imageUrl;
 
   Workout({
     required this.id,
@@ -17,6 +18,7 @@ class Workout {
     required this.durationMinutes,
     required this.difficulty,
     required this.color,
+   // required this.imageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class Workout {
       'durationMinutes': durationMinutes,
       'difficulty': difficulty,
       'color': color,
+     // 'imageUrl': imageUrl,
     };
   }
 
@@ -42,6 +45,7 @@ class Workout {
       durationMinutes: map['durationMinutes'],
       difficulty: map['difficulty'],
       color: map['color'],
+      //imageUrl: map['imageUrl'],
     );
   }
 }
