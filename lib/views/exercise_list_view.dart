@@ -40,6 +40,13 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     });
   }
 
+  String _getTodayDate() {
+    final now = DateTime.now();
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
   @override
   void dispose() {
     _bannerRefreshTimer?.cancel();
@@ -186,12 +193,22 @@ class _ExerciseListViewState extends State<ExerciseListView> {
           children: [
             Padding(
               padding: const EdgeInsets.all(20.0),
-              child: const Text(
-                'exercise',
-                style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.black87),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Exercise',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    _getTodayDate(),
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
             Expanded(
