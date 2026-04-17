@@ -51,16 +51,18 @@
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+
+        <!--    yp part, live gps tracking work in the background-->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-
-<!--    yp part, live gps tracking work in the background-->
-    <service
-        android:name="com.baseflow.geolocator.GeolocatorService"
-        android:foregroundServiceType="location"
-        android:exported="false" />
 
     <queries>
         <intent>

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 
 class GoalSettingsView extends StatefulWidget {
   const GoalSettingsView({Key? key}) : super(key: key);
@@ -50,25 +52,34 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final bg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[50]!;
+    final cardBorderColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
+    final presetCardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: bg,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Goals',
           style: TextStyle(
-            color: Colors.black87,
+            color: textColor,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
@@ -103,11 +114,7 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.flag,
-                  color: Colors.white,
-                  size: 32,
-                ),
+                const Icon(Icons.flag, color: Colors.white, size: 32),
                 const SizedBox(height: 12),
                 const Text(
                   'Daily Goals',
@@ -141,6 +148,9 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
             minValue: 100,
             maxValue: 50000,
             divisions: 49,
+            textColor: textColor,
+            cardColor: cardColor,
+            cardBorderColor: cardBorderColor,
             onChanged: (value) {
               setState(() {
                 _stepGoal = value.round();
@@ -160,9 +170,12 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
             minValue: 1.0,
             maxValue: 20.0,
             divisions: 38,
+            textColor: textColor,
+            cardColor: cardColor,
+            cardBorderColor: cardBorderColor,
             onChanged: (value) {
               setState(() {
-                _distanceGoal = (value * 2).round() / 2; // Round to 0.5
+                _distanceGoal = (value * 2).round() / 2;
               });
             },
           ),
@@ -179,47 +192,47 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
             minValue: 100,
             maxValue: 2000,
             divisions: 38,
+            textColor: textColor,
+            cardColor: cardColor,
+            cardBorderColor: cardBorderColor,
             onChanged: (value) {
               setState(() {
-                _calorieGoal = (value / 50).round() * 50; // Round to nearest 50
+                _calorieGoal = (value / 50).round() * 50;
               });
             },
           ),
           const SizedBox(height: 32),
 
           // Quick Presets
-          const Text(
+          Text(
             'Quick Presets',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _buildPresetButton(
-                'Beginner',
-                '5K steps',
-                    () {
-                  setState(() {
-                    _stepGoal = 5000;
-                    _distanceGoal = 3.0;
-                    _calorieGoal = 250;
-                  });
-                },
+                'Beginner', '5K steps',
+                presetCardColor, cardBorderColor,
+                    () => setState(() {
+                  _stepGoal = 5000;
+                  _distanceGoal = 3.0;
+                  _calorieGoal = 250;
+                }),
               ),
               const SizedBox(width: 12),
               _buildPresetButton(
-                'Intermediate',
-                '10K steps',
-                    () {
-                  setState(() {
-                    _stepGoal = 10000;
-                    _distanceGoal = 5.0;
-                    _calorieGoal = 500;
-                  });
-                },
+                'Intermediate', '10K steps',
+                presetCardColor, cardBorderColor,
+                    () => setState(() {
+                  _stepGoal = 10000;
+                  _distanceGoal = 5.0;
+                  _calorieGoal = 500;
+                }),
               ),
             ],
           ),
@@ -227,27 +240,23 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
           Row(
             children: [
               _buildPresetButton(
-                'Advanced',
-                '15K steps',
-                    () {
-                  setState(() {
-                    _stepGoal = 15000;
-                    _distanceGoal = 10.0;
-                    _calorieGoal = 750;
-                  });
-                },
+                'Advanced', '15K steps',
+                presetCardColor, cardBorderColor,
+                    () => setState(() {
+                  _stepGoal = 15000;
+                  _distanceGoal = 10.0;
+                  _calorieGoal = 750;
+                }),
               ),
               const SizedBox(width: 12),
               _buildPresetButton(
-                'Athlete',
-                '20K steps',
-                    () {
-                  setState(() {
-                    _stepGoal = 20000;
-                    _distanceGoal = 15.0;
-                    _calorieGoal = 1000;
-                  });
-                },
+                'Athlete', '20K steps',
+                presetCardColor, cardBorderColor,
+                    () => setState(() {
+                  _stepGoal = 20000;
+                  _distanceGoal = 15.0;
+                  _calorieGoal = 1000;
+                }),
               ),
             ],
           ),
@@ -267,17 +276,19 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
     required double maxValue,
     required int divisions,
     required ValueChanged<double> onChanged,
+    required Color textColor,
+    required Color cardColor,
+    required Color cardBorderColor,
   }) {
     final displayValue =
         '${value % 1 == 0 ? value.toInt() : value.toStringAsFixed(1)} $unit';
-    // for the UI overflow when adjusting the number get wider 10,000
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: cardBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,16 +305,16 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
                 child: Icon(icon, color: iconColor, size: 24),
               ),
               const SizedBox(width: 12),
-              // FIX: Expanded wraps both label + value so neither can overflow
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -315,7 +326,6 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    // Value displayed below subtitle — always has room
                     Text(
                       displayValue,
                       style: const TextStyle(
@@ -352,14 +362,15 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
     );
   }
 
-  Widget _buildPresetButton(String title, String subtitle, VoidCallback onTap) {
+  Widget _buildPresetButton(
+      String title, String subtitle, Color cardColor, Color borderColor, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF7C6FDC)),
           ),

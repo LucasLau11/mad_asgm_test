@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 import 'exercise_add_view.dart';
 
 class ExerciseDetailView extends StatefulWidget {
@@ -83,6 +84,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final panelBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final dividerColor = isDark ? Colors.grey[800] : null;
+
     final hasRoute = widget.exercise.routePoints != null &&
         widget.exercise.routePoints!.isNotEmpty;
     final routePoints = _getRouteLatLngs();
@@ -221,7 +229,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 // ── Details panel ────────────────────────────────────────────
                 Expanded(
                   child: Container(
-                    color: Colors.white,
+                    color: panelBg,
                     child: SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(
                           20, hasRoute ? 20 : 72, 20, 20),
@@ -235,10 +243,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               Expanded(
                                 child: Text(
                                   _title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                    color: textColor,
                                   ),
                                 ),
                               ),
@@ -249,10 +257,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[100],
+                                    color: isDark ? Colors.grey[800] : Colors.grey[100],
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: Colors.grey[300]!),
+                                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -276,7 +284,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                           Text(
                             '${widget.exercise.formattedDate}  ·  ${widget.exercise.formattedTime} – ${_getEndTime()}',
                             style: TextStyle(
-                                fontSize: 13, color: Colors.grey[600]),
+                                fontSize: 13, color: subTextColor),
                           ),
 
                           // Read-only notice
@@ -285,7 +293,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFF9E6),
+                                color: isDark
+                                    ? const Color(0xFF2C2600)
+                                    : const Color(0xFFFFF9E6),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                     color: const Color(0xFFFFE082)),
@@ -301,7 +311,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                       'Steps, distance, and duration were recorded automatically and cannot be edited.',
                                       style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.brown[700]),
+                                          color: isDark ? Colors.amber[200] : Colors.brown[700]),
                                     ),
                                   ),
                                 ],
@@ -314,58 +324,59 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                           // Step goal progress
                           if (widget.exercise.steps != null &&
                               widget.exercise.stepGoal != null) ...[
-                            _buildStepGoalCard(),
+                            _buildStepGoalCard(isDark),
                             const SizedBox(height: 16),
                           ],
 
                           _buildDetailRow('Exercise',
-                              widget.exercise.type.displayName),
-                          const Divider(height: 1),
+                              widget.exercise.type.displayName, textColor, subTextColor),
+                          Divider(height: 1, color: dividerColor),
 
                           if (hasDistance) ...[
                             _buildDetailRow('Distance',
                                 _formatDistance(
-                                    widget.exercise.distanceKm!)),
-                            const Divider(height: 1),
+                                    widget.exercise.distanceKm!), textColor, subTextColor),
+                            Divider(height: 1, color: dividerColor),
                           ],
 
                           if (widget.exercise.steps != null) ...[
                             _buildDetailRow('Steps',
-                                '${widget.exercise.steps} steps'),
-                            const Divider(height: 1),
+                                '${widget.exercise.steps} steps', textColor, subTextColor),
+                            Divider(height: 1, color: dividerColor),
                           ],
 
                           if (widget.exercise.energyExpended != null) ...[
                             _buildDetailRow('Energy expended',
-                                '${widget.exercise.energyExpended} cal'),
-                            const Divider(height: 1),
+                                '${widget.exercise.energyExpended} cal', textColor, subTextColor),
+                            Divider(height: 1, color: dividerColor),
                           ],
 
                           _buildDetailRow(
                             'Start',
                             '${widget.exercise.formattedDate}   ${widget.exercise.formattedTime}',
+                            textColor, subTextColor,
                           ),
-                          const Divider(height: 1),
+                          Divider(height: 1, color: dividerColor),
 
                           _buildDetailRow('Duration',
-                              '${widget.exercise.durationMinutes} min'),
-                          const Divider(height: 1),
+                              '${widget.exercise.durationMinutes} min', textColor, subTextColor),
+                          Divider(height: 1, color: dividerColor),
 
                           const SizedBox(height: 16),
 
                           if (_notes != null && _notes!.isNotEmpty) ...[
-                            const Text(
+                            Text(
                               'Note',
                               style: TextStyle(
-                                  fontSize: 13, color: Colors.grey),
+                                  fontSize: 13, color: subTextColor),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               _notes!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 13,
                                   height: 1.6,
-                                  color: Colors.black87),
+                                  color: textColor),
                             ),
                           ],
 
@@ -450,13 +461,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   // ── Widget helpers ──────────────────────────────────────────────────────────
 
-  Widget _buildStepGoalCard() {
+  Widget _buildStepGoalCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,7 +501,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           LinearProgressIndicator(
             value: (widget.exercise.steps! / widget.exercise.stepGoal!)
                 .clamp(0.0, 1.0),
-            backgroundColor: Colors.grey[300],
+            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
               widget.exercise.steps! >= widget.exercise.stepGoal!
                   ? Colors.green
@@ -501,28 +512,30 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           const SizedBox(height: 8),
           Text(
             '${widget.exercise.steps} / ${widget.exercise.stepGoal} steps',
-            style:
-            const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : Colors.black87),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, Color textColor, Color? subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87)),
+                  color: textColor)),
           Text(value,
-              style: const TextStyle(
-                  fontSize: 14, color: Colors.black87)),
+              style: TextStyle(
+                  fontSize: 14, color: textColor)),
         ],
       ),
     );
@@ -630,7 +643,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                   ? null
                   : notesController.text.trim();
 
-              // Only title and notes are updated — all sensor data is preserved.
               final updated = widget.exercise.copyWith(
                 title: newTitle,
                 notes: newNotes,

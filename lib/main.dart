@@ -59,7 +59,8 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               brightness: Brightness.light,
               primarySwatch: Colors.purple,
-              scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+              // scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+              scaffoldBackgroundColor: Colors.white,
               fontFamily: 'SF Pro Display',
               textTheme: const TextTheme(
                 bodyLarge: TextStyle(fontSize: 16, color: Colors.black87),
