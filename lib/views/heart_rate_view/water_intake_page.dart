@@ -102,10 +102,10 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: Colors.black),
@@ -123,7 +123,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ---- Daily Goal Progress Card ----
+            //Progress section
             FutureBuilder<double>(
               future: _getTodayTotal(),
               builder: (context, snapshot) {
@@ -135,7 +135,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -201,12 +201,12 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
 
             const SizedBox(height: 20),
 
-            // ---- Log Custom Amount Card ----
+            // Amount logging
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -227,16 +227,24 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                   const SizedBox(height: 12),
 
                   // Amount field
-                  const Text('Amount (ML)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Amount (ML)', style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey
+                  )),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       hintText: 'e.g. 350',
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -259,6 +267,12 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                   const Text('Beverage Type', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
+                    dropdownColor: Colors.grey[350],
                     value: _selectedBeverageType,
                     items: _beverageTypes.map((String type) {
                       return DropdownMenuItem(
@@ -273,7 +287,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                     },
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -296,12 +310,17 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                   const Text('Note (Optional)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     controller: noteController,
                     keyboardType: TextInputType.text,
                     decoration: InputDecoration(
                       hintText: 'e.g. Morning',
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -368,7 +387,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                 if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -395,13 +414,13 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'No records logged today.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                 );
@@ -454,7 +473,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
                 children: [
                   Text(
                     record.time,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   Text(
                     record.note.isEmpty ? record.beverageType : record.note,
@@ -467,7 +486,7 @@ class _WaterIntakePageState extends State<WaterIntakePage> {
             // Amount
             Text(
               '${record.amountMl.toInt()} ml',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
 
             const SizedBox(width: 4),
