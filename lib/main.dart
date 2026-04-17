@@ -129,7 +129,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   static const List<Widget> _pages = [
-    AnalyticsView(),      // Analytics & Goals module (replaces Jim placeholder)
+    AnalyticsView(),
     WorkoutProgramPage(),
     ExerciseListView(),
     HealthMonitorPage(),
