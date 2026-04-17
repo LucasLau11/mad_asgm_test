@@ -87,7 +87,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 : 'Failed to save detected walk',
           ),
           backgroundColor: success ? const Color(0xFF43A047) : Colors.red,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 20),
         ),
       );
     }
@@ -186,7 +186,8 @@ class _ExerciseListViewState extends State<ExerciseListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      // backgroundColor: const Color(0xFFF5F5F5), //more grey white
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

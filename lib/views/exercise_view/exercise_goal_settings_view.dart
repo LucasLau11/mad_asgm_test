@@ -138,7 +138,7 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
             subtitle: 'Number of steps per day',
             value: _stepGoal.toDouble(),
             unit: 'steps',
-            minValue: 100, // set back to 1000 default
+            minValue: 100,
             maxValue: 50000,
             divisions: 49,
             onChanged: (value) {
@@ -268,6 +268,10 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
     required int divisions,
     required ValueChanged<double> onChanged,
   }) {
+    final displayValue =
+        '${value % 1 == 0 ? value.toInt() : value.toStringAsFixed(1)} $unit';
+    // for the UI overflow when adjusting the number get wider 10,000
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -279,6 +283,7 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
@@ -289,6 +294,7 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
                 child: Icon(icon, color: iconColor, size: 24),
               ),
               const SizedBox(width: 12),
+              // FIX: Expanded wraps both label + value so neither can overflow
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,10 +302,11 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: TextStyle(
@@ -307,20 +314,23 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
                         color: Colors.grey[600],
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    // Value displayed below subtitle — always has room
+                    Text(
+                      displayValue,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7C6FDC),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
-                ),
-              ),
-              Text(
-                '${value % 1 == 0 ? value.toInt() : value.toStringAsFixed(1)} $unit',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF7C6FDC),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           SliderTheme(
             data: SliderThemeData(
               activeTrackColor: iconColor,
@@ -378,7 +388,6 @@ class _GoalSettingsViewState extends State<GoalSettingsView> {
     );
   }
 
-  // Static method to get current step goal
   static Future<int> getStepGoal() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('step_goal') ?? 10000;

@@ -35,6 +35,60 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
     });
   }
 
+  Future<void> _confirmLogout(bool isDark) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Log Out',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out?',
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _controller.logout();
+      DatabaseService().logoutUser();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AnalyticsAppState>(
@@ -66,13 +120,15 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
           const SizedBox(height: 16),
           CircleAvatar(
             radius: 48,
-            backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+            backgroundColor:
+            isDark ? Colors.grey.shade800 : Colors.grey.shade200,
             backgroundImage: _user?.profileImageUrl != null
                 ? NetworkImage(_user!.profileImageUrl!)
                 : null,
             child: _user?.profileImageUrl == null
                 ? Icon(Icons.person,
-                size: 48, color: isDark ? Colors.white54 : Colors.black54)
+                size: 48,
+                color: isDark ? Colors.white54 : Colors.black54)
                 : null,
           ),
           const SizedBox(height: 12),
@@ -82,13 +138,17 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
           ),
           const SizedBox(height: 32),
           _menuButton('Settings', isDark, onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AnalyticsSettingsView()));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AnalyticsSettingsView()));
           }),
           const SizedBox(height: 12),
           _menuButton('Personal Settings', isDark, onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AnalyticsPersonalSettingsView()));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AnalyticsPersonalSettingsView()));
           }),
           const SizedBox(height: 12),
           _menuButton('Help', isDark, onTap: () {
@@ -96,31 +156,28 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
                 MaterialPageRoute(builder: (_) => const AnalyticsHelpView()));
           }),
           const SizedBox(height: 12),
-          _menuButton('Logout', isDark, onTap: () async {
-            await _controller.logout();
-            DatabaseService().logoutUser();
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false, // removes all previous routes so back button won't work
-            );
-          }),
+          // Logout button — triggers confirmation dialog
+          _menuButton('Logout', isDark, onTap: () => _confirmLogout(isDark)),
         ],
       ),
     );
   }
 
   Widget _menuButton(String label, bool isDark, {required VoidCallback onTap}) {
+    final isLogout = label == 'Logout';
     return SizedBox(
       width: double.infinity,
       child: TextButton(
         onPressed: onTap,
         style: TextButton.styleFrom(
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100,
-          foregroundColor: isDark ? Colors.white : Colors.black87,
+          foregroundColor: isLogout
+              ? Colors.redAccent
+              : (isDark ? Colors.white : Colors.black87),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
           alignment: Alignment.centerLeft,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         child: Text(label, style: const TextStyle(fontSize: 15)),
       ),
