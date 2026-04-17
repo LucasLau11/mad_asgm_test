@@ -30,7 +30,7 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   }
 
   Future<void> _initialLoad() async {
-    await _controller.seedDatabaseIfNeeded();
+    // await _controller.seedDatabaseIfNeeded();
     await _loadWorkouts();
   }
 
