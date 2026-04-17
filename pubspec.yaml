@@ -63,6 +63,9 @@ dependencies:
   path: ^1.8.3
   provider: ^6.1.1
 
+  # jim
+  tflite_flutter: ^0.11.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -87,7 +90,7 @@ flutter:
 
   assets:
     - assets/images/
-
+    - assets/ml/workout_recommender.tflite
 
   # To add assets to your application, add an assets section, like this:
   # assets:

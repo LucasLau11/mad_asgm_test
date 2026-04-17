@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../exercise_model/exercise_model.dart';
 import 'analytics_goal_model.dart';
+import '../../controllers/analytics_controller.dart';
 
 class AnalyticsAppState extends ChangeNotifier {
   static const _keyDarkMode        = 'analytics_darkMode';
@@ -17,7 +19,16 @@ class AnalyticsAppState extends ChangeNotifier {
   static const _keyHeight          = 'analytics_height';
   static const _keyGender          = 'analytics_gender';
 
-  // ── Dark mode ──────────────────────────────────────────
+  // ── Shared controller instance — owns the DB queries & ML model ─────────
+  // Kept here so it survives tab switches (AnalyticsView disposes/creates
+  // a new state, but AnalyticsAppState lives for the app lifetime).
+  final AnalyticsController analyticsController = AnalyticsController();
+
+  // ── Loading state — UI shows a spinner while data loads ─────────────────
+  bool _analyticsLoading = false;
+  bool get analyticsLoading => _analyticsLoading;
+
+  // ── Dark mode ──────────────────────────────────────────────────────────────
   bool _darkMode = false;
   bool get darkMode => _darkMode;
   void setDarkMode(bool value) {
@@ -26,7 +37,7 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setBool(_keyDarkMode, value);
   }
 
-  // ── Username ───────────────────────────────────────────
+  // ── Username ───────────────────────────────────────────────────────────────
   String _username = 'JohnDoe';
   String get username => _username;
   void setUsername(String value) {
@@ -35,7 +46,7 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setString(_keyUsername, _username);
   }
 
-  // ── Settings toggles ───────────────────────────────────
+  // ── Settings toggles ───────────────────────────────────────────────────────
   bool _notifications = true;
   bool get notifications => _notifications;
   void setNotifications(bool value) {
@@ -52,7 +63,7 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setBool(_keyWorkoutReminder, value);
   }
 
-  // ── Measurement unit ───────────────────────────────────
+  // ── Measurement unit ───────────────────────────────────────────────────────
   String _measurementUnit = 'Metric';
   String get measurementUnit => _measurementUnit;
   bool get isMetric => _measurementUnit == 'Metric';
@@ -67,7 +78,7 @@ class AnalyticsAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Unit-aware options ─────────────────────────────────
+  // ── Unit-aware options ─────────────────────────────────────────────────────
   List<String> get weightOptions => isMetric
       ? List.generate(91, (i) => '${i + 30} kg')
       : [
@@ -108,7 +119,7 @@ class AnalyticsAppState extends ChangeNotifier {
     return storedGoalType;
   }
 
-  // ── Personal settings ──────────────────────────────────
+  // ── Personal settings ──────────────────────────────────────────────────────
   bool _gpsTracking = true;
   bool get gpsTracking => _gpsTracking;
   void setGpsTracking(bool value) {
@@ -157,7 +168,7 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setString(_keyGender, value);
   }
 
-  // ── Goals ──────────────────────────────────────────────
+  // ── Goals ──────────────────────────────────────────────────────────────────
   final List<GoalModel> _goals = [];
   List<GoalModel> get goals => List.unmodifiable(_goals);
 
@@ -187,7 +198,53 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setString(_keyGoals, encoded);
   }
 
-  // ── Persistence bootstrap ──────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  ANALYTICS DATA REFRESH
+  //
+  //  Call this from any module after saving a new exercise or workout:
+  //
+  //    context.read<AnalyticsAppState>().refreshAnalytics();
+  //
+  //  The AnalyticsView rebuilds automatically via notifyListeners().
+  // ══════════════════════════════════════════════════════════════════════════
+  Future<void> refreshAnalytics() async {
+    _analyticsLoading = true;
+    notifyListeners();
+    await analyticsController.loadData();
+    _analyticsLoading = false;
+    notifyListeners();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  GOAL SYNC FROM EXERCISE
+  //
+  //  Call this right after saving a completed cardio exercise to
+  //  automatically advance Cal Burned / Steps Walked / Km Ran goals:
+  //
+  //    context.read<AnalyticsAppState>().syncGoalsFromExercise(exercise);
+  //
+  // ══════════════════════════════════════════════════════════════════════════
+  void syncGoalsFromExercise(Exercise exercise) {
+    final updated = analyticsController.syncGoalProgressFromExercise(
+      exercise: exercise,
+      goals: List.from(_goals),
+      isMetric: isMetric,
+    );
+    bool changed = false;
+    for (final g in updated) {
+      final idx = _goals.indexWhere((og) => og.id == g.id);
+      if (idx != -1 && _goals[idx].progress != g.progress) {
+        _goals[idx] = g;
+        changed = true;
+      }
+    }
+    if (changed) {
+      notifyListeners();
+      _saveGoals();
+    }
+  }
+
+  // ── Persistence bootstrap ──────────────────────────────────────────────────
   SharedPreferences? _prefs;
 
   Future<void> loadFromStorage() async {
@@ -222,6 +279,12 @@ class AnalyticsAppState extends ChangeNotifier {
         progress: 0,
       ));
     }
+
+    // Pre-warm the ML model and load real data from both databases
+    await Future.wait([
+      analyticsController.loadModel(),
+      analyticsController.loadData(),
+    ]);
 
     notifyListeners();
   }
