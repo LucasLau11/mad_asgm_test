@@ -368,11 +368,14 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                                           size: 11,
                                           color: isGain ? Colors.red : Colors.green,
                                         ),
-                                        Text(
-                                          '${diff.abs().toStringAsFixed(1)} kg compared to previous.',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isGain ? Colors.red : Colors.green,
+                                        Flexible(
+                                          child: Text(
+                                            '${diff.abs().toStringAsFixed(1)} kg compared to previous.',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: isGain ? Colors.red : Colors.green,
+                                            ),
+                                            softWrap: true,
                                           ),
                                         ),
                                       ],
