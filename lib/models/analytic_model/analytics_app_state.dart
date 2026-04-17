@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../exercise_model/exercise_model.dart';
 import 'analytics_goal_model.dart';
 import '../../controllers/analytics_controller.dart';
+import '../exercise_model/exercise_model.dart';
+import '../../services/database/heart_rate_database_service.dart' as shared_db;
 
 class AnalyticsAppState extends ChangeNotifier {
+  // ── All SharedPreferences keys are namespaced by userId so that
+  //    settings for user A never bleed into user B on the same device. ──────
+  String _userKey(String key) => 'u${_currentUserId}_$key';
+
   static const _keyDarkMode        = 'analytics_darkMode';
   static const _keyUsername        = 'analytics_username';
   static const _keyGoals           = 'analytics_goals';
@@ -19,40 +24,49 @@ class AnalyticsAppState extends ChangeNotifier {
   static const _keyHeight          = 'analytics_height';
   static const _keyGender          = 'analytics_gender';
 
-  // ── Shared controller instance — owns the DB queries & ML model ─────────
-  // Kept here so it survives tab switches (AnalyticsView disposes/creates
-  // a new state, but AnalyticsAppState lives for the app lifetime).
+  // ── Current logged-in user id (0 = nobody logged in) ────────────────────
+  int get _currentUserId {
+    try { return shared_db.DatabaseService.currentUserId; } catch (_) { return 0; }
+  }
+
+  // ── Shared controller instance ───────────────────────────────────────────
   final AnalyticsController analyticsController = AnalyticsController();
 
-  // ── Loading state — UI shows a spinner while data loads ─────────────────
+  // ── Loading state ─────────────────────────────────────────────────────────
   bool _analyticsLoading = false;
   bool get analyticsLoading => _analyticsLoading;
 
-  // ── Dark mode ──────────────────────────────────────────────────────────────
+  // ── Dark mode ─────────────────────────────────────────────────────────────
   bool _darkMode = false;
   bool get darkMode => _darkMode;
   void setDarkMode(bool value) {
     _darkMode = value;
     notifyListeners();
-    _prefs?.setBool(_keyDarkMode, value);
+    _prefs?.setBool(_userKey(_keyDarkMode), value);
   }
 
-  // ── Username ───────────────────────────────────────────────────────────────
-  String _username = 'JohnDoe';
+  // ── Username ──────────────────────────────────────────────────────────────
+  // Seeded from DB on login. User can change it to a display alias via
+  // Personal Settings — this saves to prefs but does NOT touch the login DB.
+  String _username = '';
   String get username => _username;
   void setUsername(String value) {
     _username = value.trim();
     notifyListeners();
-    _prefs?.setString(_keyUsername, _username);
+    _prefs?.setString(_userKey(_keyUsername), _username);
   }
 
-  // ── Settings toggles ───────────────────────────────────────────────────────
+  // ── Email — read-only, sourced from the DB user record ───────────────────
+  String _email = '';
+  String get email => _email;
+
+  // ── Settings toggles ──────────────────────────────────────────────────────
   bool _notifications = true;
   bool get notifications => _notifications;
   void setNotifications(bool value) {
     _notifications = value;
     notifyListeners();
-    _prefs?.setBool(_keyNotifications, value);
+    _prefs?.setBool(_userKey(_keyNotifications), value);
   }
 
   bool _workoutReminder = true;
@@ -60,10 +74,10 @@ class AnalyticsAppState extends ChangeNotifier {
   void setWorkoutReminder(bool value) {
     _workoutReminder = value;
     notifyListeners();
-    _prefs?.setBool(_keyWorkoutReminder, value);
+    _prefs?.setBool(_userKey(_keyWorkoutReminder), value);
   }
 
-  // ── Measurement unit ───────────────────────────────────────────────────────
+  // ── Measurement unit ──────────────────────────────────────────────────────
   String _measurementUnit = 'Metric';
   String get measurementUnit => _measurementUnit;
   bool get isMetric => _measurementUnit == 'Metric';
@@ -72,13 +86,12 @@ class AnalyticsAppState extends ChangeNotifier {
     _measurementUnit = value;
     _weight = defaultWeight;
     _height = defaultHeight;
-    _prefs?.setString(_keyMeasurementUnit, value);
-    _prefs?.setString(_keyWeight, _weight);
-    _prefs?.setString(_keyHeight, _height);
+    _prefs?.setString(_userKey(_keyMeasurementUnit), value);
+    _prefs?.setString(_userKey(_keyWeight), _weight);
+    _prefs?.setString(_userKey(_keyHeight), _height);
     notifyListeners();
   }
 
-  // ── Unit-aware options ─────────────────────────────────────────────────────
   List<String> get weightOptions => isMetric
       ? List.generate(91, (i) => '${i + 30} kg')
       : [
@@ -109,7 +122,6 @@ class AnalyticsAppState extends ChangeNotifier {
       'Miles Ran': 'Km Ran',
       'Weight Lost (lbs)': 'Weight Lost (kg)',
     };
-
     if (isMetric && imperialToMetric.containsKey(storedGoalType)) {
       return '${imperialToMetric[storedGoalType]!} ⚠';
     }
@@ -119,13 +131,13 @@ class AnalyticsAppState extends ChangeNotifier {
     return storedGoalType;
   }
 
-  // ── Personal settings ──────────────────────────────────────────────────────
+  // ── Personal settings ─────────────────────────────────────────────────────
   bool _gpsTracking = true;
   bool get gpsTracking => _gpsTracking;
   void setGpsTracking(bool value) {
     _gpsTracking = value;
     notifyListeners();
-    _prefs?.setBool(_keyGpsTracking, value);
+    _prefs?.setBool(_userKey(_keyGpsTracking), value);
   }
 
   bool _heartRateAlert = true;
@@ -133,7 +145,7 @@ class AnalyticsAppState extends ChangeNotifier {
   void setHeartRateAlert(bool value) {
     _heartRateAlert = value;
     notifyListeners();
-    _prefs?.setBool(_keyHeartRateAlert, value);
+    _prefs?.setBool(_userKey(_keyHeartRateAlert), value);
   }
 
   bool _autoDetectWorkout = true;
@@ -141,7 +153,7 @@ class AnalyticsAppState extends ChangeNotifier {
   void setAutoDetectWorkout(bool value) {
     _autoDetectWorkout = value;
     notifyListeners();
-    _prefs?.setBool(_keyAutoDetect, value);
+    _prefs?.setBool(_userKey(_keyAutoDetect), value);
   }
 
   String _weight = '75 kg';
@@ -149,7 +161,7 @@ class AnalyticsAppState extends ChangeNotifier {
   void setWeight(String value) {
     _weight = value;
     notifyListeners();
-    _prefs?.setString(_keyWeight, value);
+    _prefs?.setString(_userKey(_keyWeight), value);
   }
 
   String _height = '170 cm';
@@ -157,7 +169,7 @@ class AnalyticsAppState extends ChangeNotifier {
   void setHeight(String value) {
     _height = value;
     notifyListeners();
-    _prefs?.setString(_keyHeight, value);
+    _prefs?.setString(_userKey(_keyHeight), value);
   }
 
   String _gender = 'Male';
@@ -165,7 +177,7 @@ class AnalyticsAppState extends ChangeNotifier {
   void setGender(String value) {
     _gender = value;
     notifyListeners();
-    _prefs?.setString(_keyGender, value);
+    _prefs?.setString(_userKey(_keyGender), value);
   }
 
   // ── Goals ──────────────────────────────────────────────────────────────────
@@ -195,17 +207,84 @@ class AnalyticsAppState extends ChangeNotifier {
 
   void _saveGoals() {
     final encoded = jsonEncode(_goals.map((g) => g.toJson()).toList());
-    _prefs?.setString(_keyGoals, encoded);
+    _prefs?.setString(_userKey(_keyGoals), encoded);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  LOGIN HOOK
+  //
+  //  Call this in login_screen.dart and signup_screen.dart right after a
+  //  successful loginUser() / registerUser() call, before navigating away:
+  //
+  //    await context.read<AnalyticsAppState>().onUserLoggedIn();
+  //
+  //  Loads this user's saved prefs and seeds username/email from the DB.
+  // ══════════════════════════════════════════════════════════════════════════
+  Future<void> onUserLoggedIn() async {
+    final dbUser = shared_db.DatabaseService.currentUser;
+
+    // Email always comes from the DB — not editable here
+    _email = dbUser?.email ?? '';
+
+    // Username: use their saved display alias if they set one,
+    // otherwise fall back to their actual login username from the DB.
+    final saved = _prefs?.getString(_userKey(_keyUsername)) ?? '';
+    _username = saved.isNotEmpty ? saved : (dbUser?.username ?? '');
+
+    _darkMode          = _prefs?.getBool(_userKey(_keyDarkMode))          ?? false;
+    _notifications     = _prefs?.getBool(_userKey(_keyNotifications))     ?? true;
+    _workoutReminder   = _prefs?.getBool(_userKey(_keyWorkoutReminder))   ?? true;
+    _measurementUnit   = _prefs?.getString(_userKey(_keyMeasurementUnit)) ?? 'Metric';
+    _gpsTracking       = _prefs?.getBool(_userKey(_keyGpsTracking))       ?? true;
+    _heartRateAlert    = _prefs?.getBool(_userKey(_keyHeartRateAlert))    ?? true;
+    _autoDetectWorkout = _prefs?.getBool(_userKey(_keyAutoDetect))        ?? true;
+    _gender            = _prefs?.getString(_userKey(_keyGender))          ?? 'Male';
+
+    _weight = _prefs?.getString(_userKey(_keyWeight))
+        ?? (_measurementUnit == 'Metric' ? '75 kg' : '165 lbs');
+    _height = _prefs?.getString(_userKey(_keyHeight))
+        ?? (_measurementUnit == 'Metric' ? '170 cm' : '5\'7"');
+
+    _goals.clear();
+    final goalsJson = _prefs?.getString(_userKey(_keyGoals));
+    if (goalsJson != null) {
+      final List decoded = jsonDecode(goalsJson);
+      _goals.addAll(decoded.map((e) => GoalModel.fromJson(e)));
+    }
+
+    await Future.wait([
+      analyticsController.loadModel(),
+      analyticsController.loadData(),
+    ]);
+
+    notifyListeners();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  LOGOUT HOOK
+  //
+  //  Call this alongside DatabaseService().logoutUser() in profile_view.dart.
+  //  Wipes all in-memory state so the next user starts clean.
+  // ══════════════════════════════════════════════════════════════════════════
+  void onUserLoggedOut() {
+    _username          = '';
+    _email             = '';
+    _darkMode          = false;
+    _notifications     = true;
+    _workoutReminder   = true;
+    _measurementUnit   = 'Metric';
+    _gpsTracking       = true;
+    _heartRateAlert    = true;
+    _autoDetectWorkout = true;
+    _weight            = '75 kg';
+    _height            = '170 cm';
+    _gender            = 'Male';
+    _goals.clear();
+    notifyListeners();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
   //  ANALYTICS DATA REFRESH
-  //
-  //  Call this from any module after saving a new exercise or workout:
-  //
-  //    context.read<AnalyticsAppState>().refreshAnalytics();
-  //
-  //  The AnalyticsView rebuilds automatically via notifyListeners().
   // ══════════════════════════════════════════════════════════════════════════
   Future<void> refreshAnalytics() async {
     _analyticsLoading = true;
@@ -217,12 +296,6 @@ class AnalyticsAppState extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   //  GOAL SYNC FROM EXERCISE
-  //
-  //  Call this right after saving a completed cardio exercise to
-  //  automatically advance Cal Burned / Steps Walked / Km Ran goals:
-  //
-  //    context.read<AnalyticsAppState>().syncGoalsFromExercise(exercise);
-  //
   // ══════════════════════════════════════════════════════════════════════════
   void syncGoalsFromExercise(Exercise exercise) {
     final updated = analyticsController.syncGoalProgressFromExercise(
@@ -244,48 +317,14 @@ class AnalyticsAppState extends ChangeNotifier {
     }
   }
 
-  // ── Persistence bootstrap ──────────────────────────────────────────────────
+  // ── App-start bootstrap — called once from main() before any user logs in ─
+  // Only initialises SharedPreferences and pre-warms the TFLite model.
+  // User-specific data is loaded by onUserLoggedIn().
   SharedPreferences? _prefs;
 
   Future<void> loadFromStorage() async {
     _prefs = await SharedPreferences.getInstance();
-
-    _darkMode          = _prefs!.getBool(_keyDarkMode)         ?? false;
-    _username          = _prefs!.getString(_keyUsername)        ?? 'JohnDoe';
-    _notifications     = _prefs!.getBool(_keyNotifications)    ?? true;
-    _workoutReminder   = _prefs!.getBool(_keyWorkoutReminder)   ?? true;
-    _measurementUnit   = _prefs!.getString(_keyMeasurementUnit) ?? 'Metric';
-    _gpsTracking       = _prefs!.getBool(_keyGpsTracking)       ?? true;
-    _heartRateAlert    = _prefs!.getBool(_keyHeartRateAlert)    ?? true;
-    _autoDetectWorkout = _prefs!.getBool(_keyAutoDetect)        ?? true;
-    _gender            = _prefs!.getString(_keyGender)          ?? 'Male';
-
-    _weight = _prefs!.getString(_keyWeight) ??
-        (_measurementUnit == 'Metric' ? '75 kg' : '165 lbs');
-    _height = _prefs!.getString(_keyHeight) ??
-        (_measurementUnit == 'Metric' ? '170 cm' : '5\'7"');
-
-    final goalsJson = _prefs!.getString(_keyGoals);
-    if (goalsJson != null) {
-      final List decoded = jsonDecode(goalsJson);
-      _goals.addAll(decoded.map((e) => GoalModel.fromJson(e)));
-    } else {
-      _goals.add(GoalModel(
-        id: '1',
-        goalType: 'Cal Burned',
-        target: '5000',
-        deadline: 'Before Trip!',
-        reason: 'Stay fit for vacation',
-        progress: 0,
-      ));
-    }
-
-    // Pre-warm the ML model and load real data from both databases
-    await Future.wait([
-      analyticsController.loadModel(),
-      analyticsController.loadData(),
-    ]);
-
+    await analyticsController.loadModel();
     notifyListeners();
   }
 }

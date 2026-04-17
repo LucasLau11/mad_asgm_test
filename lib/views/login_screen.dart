@@ -5,6 +5,7 @@ import '../widgets/shared_widgets.dart';
 import 'signup_screen.dart';
 import 'package:provider/provider.dart';
 import '../controllers/exercise_controller.dart';
+import '../models/analytic_model/analytics_app_state.dart';
 
 
 
@@ -60,6 +61,10 @@ class _LoginScreenState extends State<LoginScreen> {
     // ← Reload exercises scoped to the newly logged-in user
     await Provider.of<ExerciseController>(context, listen: false)
         .reloadForCurrentUser();
+
+    // Seed analytics state with the logged-in user's data
+    await Provider.of<AnalyticsAppState>(context, listen: false)
+        .onUserLoggedIn();
 
     if (!mounted) return;
 

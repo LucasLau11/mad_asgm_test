@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/database/heart_rate_database_service.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
+import 'package:provider/provider.dart';
+import '../models/analytic_model/analytics_app_state.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -72,6 +74,12 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       return;
     }
+
+    // Seed analytics state for the newly registered user
+    await Provider.of<AnalyticsAppState>(context, listen: false)
+        .onUserLoggedIn();
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -255,4 +263,3 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
-
