@@ -87,7 +87,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 : 'Failed to save detected walk',
           ),
           backgroundColor: success ? const Color(0xFF43A047) : Colors.red,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 20),
         ),
       );
     }

@@ -30,19 +30,17 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   }
 
   Future<void> _initialLoad() async {
-    // await _controller.seedDatabaseIfNeeded();
     await _loadWorkouts();
   }
 
   Future<void> _loadWorkouts() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
+
     try {
-      // FIXED: Only load workouts for the currently logged-in user
       final currentUserId = DatabaseService.currentUserId;
       final workouts = await _controller.getWorkoutsByUserId(currentUserId);
-      
+
       if (mounted) {
         setState(() {
           _allWorkouts = workouts;
@@ -88,6 +86,13 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
     });
   }
 
+  String _getFormattedDate() {
+    final now = DateTime.now();
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,22 +102,31 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(20.0),
-
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Workout Program', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  const SizedBox(height: 8),
-                  Text(_getFormattedDate(), style: const TextStyle(fontSize: 16, color: Colors.black54)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Workout Program',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          _getFormattedDate(),
+                          style: const TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 20),
 
             // Search Bar
             Padding(
@@ -122,7 +136,9 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: _isSearching ? [BoxShadow(color: Colors.blue.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                  boxShadow: _isSearching
+                      ? [BoxShadow(color: Colors.blue.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))]
+                      : [],
                 ),
                 child: Row(
                   children: [
@@ -131,12 +147,15 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        decoration: const InputDecoration(hintText: 'Search workouts...', border: InputBorder.none),
+                        decoration: const InputDecoration(
+                          hintText: 'Search workouts...',
+                          border: InputBorder.none,
+                        ),
                       ),
                     ),
                     if (_isSearching)
                       IconButton(
-                        icon:  Icon(Icons.clear, color: Colors.grey[600]),
+                        icon: Icon(Icons.clear, color: Colors.grey[600]),
                         onPressed: _clearSearch,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -150,29 +169,40 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
 
             // Main Content Area
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredWorkouts.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredWorkouts.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(_isSearching ? Icons.search_off : Icons.fitness_center, size: 80, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(_isSearching ? 'No workouts found' : 'No workouts available', style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _filteredWorkouts.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildWorkoutCard(_filteredWorkouts[index]),
-                        );
-                      },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isSearching ? Icons.search_off : Icons.fitness_center,
+                      size: 80,
+                      color: Colors.grey[400],
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _isSearching ? 'No workouts found' : 'No workouts available',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: _filteredWorkouts.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildWorkoutCard(_filteredWorkouts[index]),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -184,14 +214,20 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
           children: [
             ElevatedButton(
               onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageWorkoutsPage()));
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ManageWorkoutsPage()),
+                );
                 _loadWorkouts();
               },
               child: const Text("Manage"),
             ),
             ElevatedButton(
               onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddWorkoutProgramPage()));
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddWorkoutProgramPage()),
+                );
                 _loadWorkouts();
               },
               child: const Text("+ Add"),
@@ -205,7 +241,10 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   Widget _buildWorkoutCard(Workout workout) {
     return GestureDetector(
       onTap: () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (context) => WorkoutDetailPage(workout: workout)));
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => WorkoutDetailPage(workout: workout)),
+        );
         _loadWorkouts();
       },
       child: Container(
@@ -220,26 +259,41 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: Text(workout.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87))),
+                Expanded(
+                  child: Text(
+                    workout.name,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Text(workout.difficulty, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    workout.difficulty,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(workout.description, style: TextStyle(fontSize: 14, color: Colors.black.withOpacity(0.6))),
+            Text(
+              workout.description,
+              style: TextStyle(fontSize: 14, color: Colors.black.withOpacity(0.6)),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  String _getFormattedDate() {
-    final now = DateTime.now();
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
   }
 }
