@@ -17,8 +17,15 @@ class ExerciseDetailPage extends StatefulWidget {
 class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   late int sets;
   late int repeat;
+  late String focusBodyPart;
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  final Map<String, String> _exerciseToBodyPart = {
+    'Squat': 'Leg',
+    'Sit-up': 'Abdominal Muscle',
+    'Push-ups': 'Chest',
+  };
 
   final List<String> _fallbackImages = [
     'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=800&q=80',
@@ -31,6 +38,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     super.initState();
     sets = widget.exercise.sets;
     repeat = widget.exercise.reps;
+    // Get focus body part from the map or default to 'Other'
+    focusBodyPart = _exerciseToBodyPart[widget.exercise.name] ?? 'Other';
   }
 
   @override
@@ -90,7 +99,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                           itemCount: displayImages.length,
                           itemBuilder: (context, index) {
                             final path = displayImages[index];
-                            
+
                             // Check if path is a URL or a Local File
                             if (path.startsWith('http')) {
                               return Image.network(
@@ -160,6 +169,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                   _buildControlRow('Sets', sets),
                   const SizedBox(height: 12),
                   _buildControlRow('Repeat', repeat),
+                  const SizedBox(height: 12),
+                  _buildControlRow('Focus Body Part', focusBodyPart),
 
                   const SizedBox(height: 20),
 
@@ -185,15 +196,32 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     );
   }
 
-  Widget _buildControlRow(String label, int value) {
+  Widget _buildControlRow(String label, dynamic value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Label on the left
           Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
-          Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+
+          const SizedBox(width: 16), // Add some spacing between label and value
+
+          // Value on the right
+          Expanded(
+            child: Text(
+              '$value',
+              textAlign: TextAlign.end, // Keep the text aligned to the right
+              overflow: TextOverflow.ellipsis, // This adds the "..."
+              maxLines: 1, // Ensure it stays on one line
+              style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87
+              ),
+            ),
+          ),
         ],
       ),
     );

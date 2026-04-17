@@ -146,6 +146,21 @@ class DatabaseService {
     return sha256.convert(bytes).toString();
   }
 
+  //reset password
+  Future<bool> resetPassword({
+    required String username,
+    required String newPassword,
+  }) async {
+    final db = await database;
+    final count = await db.update(
+      'User',
+      {'passwordHash': _hashPassword(newPassword)},
+      where: 'username = ?',
+      whereArgs: [username.trim()],
+    );
+    return count > 0; // username not found
+  }
+
   // authentication
 
   // Register a new user. Returns the created [UserModel] or null if the username is already taken.

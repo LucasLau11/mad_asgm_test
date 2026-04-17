@@ -157,7 +157,137 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      final usernameController = TextEditingController();
+                      final newPasswordController = TextEditingController();
+                      final confirmPasswordController = TextEditingController();
+                      bool obscureNew = true;
+                      bool obscureConfirm = true;
+
+                      showDialog(
+                        context: context,
+                        builder: (context) => StatefulBuilder(
+                          builder: (context, setDialogState) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text(
+                              'Reset Password',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Enter your username and a new password.',
+                                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: usernameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Username',
+                                    prefixIcon: const Icon(Icons.person_outline),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: newPasswordController,
+                                  obscureText: obscureNew,
+                                  decoration: InputDecoration(
+                                    labelText: 'New Password',
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                      onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                                    ),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: confirmPasswordController,
+                                  obscureText: obscureConfirm,
+                                  decoration: InputDecoration(
+                                    labelText: 'Confirm Password',
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                      onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                                    ),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final username = usernameController.text.trim();
+                                  final newPw = newPasswordController.text;
+                                  final confirmPw = confirmPasswordController.text;
+
+                                  if (username.isEmpty || newPw.isEmpty || confirmPw.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Please fill in all fields.'),
+                                        backgroundColor: Colors.orange,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (newPw != confirmPw) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Passwords do not match.'),
+                                        backgroundColor: Colors.redAccent,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final success = await _dbService.resetPassword(
+                                    username: username,
+                                    newPassword: newPw,
+                                  );
+
+                                  if (!context.mounted) return;
+                                  Navigator.pop(context);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(success
+                                          ? 'Password reset successfully!'
+                                          : 'Username not found.'),
+                                      backgroundColor: success ? Colors.green : Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: const Text('Reset'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                     child: Text('Forgot Password ?',
                         style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500)),
                   ),

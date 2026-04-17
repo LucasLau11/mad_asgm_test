@@ -101,37 +101,16 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
             ),
 
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Workout Program',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    _getFormattedDate(),
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
+                  const Text('Workout Program', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 8),
+                  Text(_getFormattedDate(), style: const TextStyle(fontSize: 16, color: Colors.black54)),
                 ],
               ),
             ),
-
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            //   child: Column(
-            //     crossAxisAlignment: CrossAxisAlignment.start,
-            //     children: [
-            //       const Text('Workout Program', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black87)),
-            //       const SizedBox(height: 8),
-            //       Text(_getFormattedDate(), style: const TextStyle(fontSize: 16, color: Colors.black54)),
-            //     ],
-            //   ),
-            // ),
 
             const SizedBox(height: 20),
 

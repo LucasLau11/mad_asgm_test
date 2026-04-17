@@ -35,12 +35,8 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   // Exercise library mapping for auto-select
   final Map<String, String> _exerciseToBodyPart = {
     'Squat': 'Leg',
-    'Lunges': 'Leg',
-    'Leg Press': 'Leg',
+    'Sit-up': 'Abdominal Muscle',
     'Push-ups': 'Chest',
-    'Bench Press': 'Chest',
-    'Bicep Curls': 'Arm',
-    'Tricep Dips': 'Arm',
   };
 
   // Difficulty settings
@@ -49,7 +45,11 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
     'Intermediate': {'sets': 3, 'repeat': 12},
     'Advanced': {'sets': 4, 'repeat': 15},
   };
-
+  final Map<String, String> _predefinedInstructions = {
+    'Squat': '1. Stand with feet shoulder-width apart.\n2. Keep your back straight and lower your hips as if sitting in a chair.\n3. Go down until thighs are parallel to the floor.\n4. Push through heels to return to start.',
+    'Sit-up': '1. Lie on your back with your knees bent and feet flat on the floor.\n2. Place your hands behind your head or cross them over your chest.\n3. Engage your core and lift your upper body until your chest is near your thighs.\n4. Slowly lower your back down to the starting position.',
+    'Push-ups': '1. Start in a plank position.\n2. Lower your body until your chest nearly touches the floor.\n3. Keep your core tight and back flat.\n4. Push back up to the starting position.',
+  };
   // Exercise fields
   List<EditExerciseForm> _exercises = [];
   bool _isLoading = true;
@@ -64,6 +64,71 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
     _selectedDifficulty = widget.workout.difficulty;
 
     _loadExercises();
+  }
+
+  void _syncDifficultyFromExercises() {
+    if (_exercises.isEmpty) return;
+
+    // Calculate average sets
+    double avgSets = _exercises.fold(0, (sum, ex) => sum + ex.sets) / _exercises.length;
+
+    String newDifficulty;
+    if (avgSets <= 2.2) {
+      newDifficulty = 'Beginner';
+    } else if (avgSets <= 3.2) {
+      newDifficulty = 'Intermediate';
+    } else {
+      newDifficulty = 'Advanced';
+    }
+
+    if (_selectedDifficulty != newDifficulty) {
+      setState(() {
+        _selectedDifficulty = newDifficulty;
+      });
+    }
+  }
+
+  void _showAndroidTimerPicker() {
+    int currentVal = int.tryParse(_durationController.text) ?? 30;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Container(
+          height: 300,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Text("Select Duration (Minutes)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: ListWheelScrollView.useDelegate(
+                  itemExtent: 50,
+                  perspective: 0.005,
+                  diameterRatio: 1.2,
+                  physics: const FixedExtentScrollPhysics(),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _durationController.text = (index + 1).toString();
+                    });
+                  },
+                  childDelegate: ListWheelChildBuilderDelegate(
+                    childCount: 120,
+                    builder: (context, index) => Center(
+                      child: Text('${index + 1} mins', style: const TextStyle(fontSize: 20)),
+                    ),
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Done"),
+              )
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _loadExercises() async {
@@ -159,7 +224,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
       try {
         final updatedWorkout = Workout(
           id: widget.workout.id,
-          userId: widget.workout.userId, // FIXED: Added missing userId
+          userId: widget.workout.userId,
           name: _programNameController.text,
           description: '${_exercises.length} exercises - ${_durationController.text} min',
           exerciseCount: _exercises.length,
@@ -234,7 +299,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                     child: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
                   ),
                   const SizedBox(width: 16),
-                  const Text('Edit Workout Program', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const Text('Edit Workout ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
                 ],
               ),
             ),
@@ -262,7 +327,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text('Edit Record', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-                                  Text('ID: ${widget.workout.id}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                                  // Text('ID: ${widget.workout.id}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                                 ],
                               ),
                             ],
@@ -277,7 +342,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Edit Workout Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                              const Text('Update Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                               const SizedBox(height: 20),
                               _buildLabel('Program name'),
                               _buildTextField(controller: _programNameController, hintText: 'Leg Workout'),
@@ -286,7 +351,20 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                               _buildDropdown(value: _selectedGoal, items: _goals, onChanged: (value) => setState(() => _selectedGoal = value!)),
                               const SizedBox(height: 16),
                               _buildLabel('Durations'),
-                              _buildTextField(controller: _durationController, hintText: '30 mins', keyboardType: TextInputType.number),
+                              GestureDetector(
+                                onTap: _showAndroidTimerPicker,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('${_durationController.text} mins', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                      const Icon(Icons.timer, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 16),
                               _buildLabel('Difficulty'),
                               _buildDropdown(
@@ -418,7 +496,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   }
 
   Widget _buildExerciseForm(EditExerciseForm exercise, int index) {
-    final bodyParts = ['Leg', 'Chest', 'Arm', 'Back', 'Shoulder', 'Core'];
+    final bodyParts = ['Leg', 'Chest', 'Arm', 'Back', 'Shoulder', 'Abdominal Muscle'];
     final exerciseNames = _exerciseToBodyPart.keys.toList();
 
     return Container(
@@ -528,8 +606,35 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
           ),
           const SizedBox(height: 16),
 
-          _buildLabel('Instructions'),
-          _buildTextField(controller: exercise.instructionsController, hintText: 'Enter exercise instructions...', maxLines: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildLabel('Instructions'),
+              // Only show the button if the current exercise has a preset available
+              if (_predefinedInstructions.containsKey(exercise.exerciseNameController.text))
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      exercise.instructionsController.text =
+                      _predefinedInstructions[exercise.exerciseNameController.text]!;
+                    });
+                  },
+                  icon: const Icon(Icons.description, size: 14),
+                  label: const Text('Use Preset', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF9FA8DA),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+          _buildTextField(
+              controller: exercise.instructionsController,
+              hintText: 'Enter exercise instructions...',
+              maxLines: 4
+          ),
         ],
       ),
     );

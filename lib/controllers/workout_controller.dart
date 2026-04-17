@@ -58,7 +58,7 @@ class WorkoutController {
   }
 
   // Helper method to seed initial data if database is empty
-  Future<void> seedDatabaseIfNeeded() async {
+/*  Future<void> seedDatabaseIfNeeded() async {
     final workouts = await getAllWorkouts();
     if (workouts.isEmpty) {
       final initialWorkout = Workout(
@@ -86,5 +86,5 @@ class WorkoutController {
 
       await addWorkout(initialWorkout, initialExercises);
     }
-  }
+  }*/
 }
