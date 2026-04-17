@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../models/heart_rate_model/heart_rate_model.dart';
 import '../../models/heart_rate_model/user_model.dart';
@@ -22,6 +23,42 @@ class DatabaseService {
   static int get currentUserId {
     assert(_currentUser != null, 'No user is logged in');
     return _currentUser!.id;
+  }
+
+  // ── Session persistence keys ──────────────────────────────────────────────
+  static const String _keyKeepSignedIn  = 'session_keepSignedIn';
+  static const String _keySessionUserId = 'session_userId';
+
+  /// Persist "keep me signed in" flag and the logged-in user id.
+  static Future<void> saveSession(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyKeepSignedIn, true);
+    await prefs.setInt(_keySessionUserId, user.id);
+  }
+
+  /// Clear the persisted session (called on explicit logout).
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyKeepSignedIn);
+    await prefs.remove(_keySessionUserId);
+  }
+
+  /// Try to restore a previous session.
+  /// Returns the [UserModel] if a valid saved session exists, otherwise null.
+  Future<UserModel?> tryRestoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keep = prefs.getBool(_keyKeepSignedIn) ?? false;
+    if (!keep) return null;
+
+    final userId = prefs.getInt(_keySessionUserId);
+    if (userId == null) return null;
+
+    final user = await _fetchUserById(userId);
+    if (user != null) {
+      _currentUser = user;
+      log('Session restored for: ${user.username} (id ${user.id})');
+    }
+    return user;
   }
 
   //Database instance
@@ -210,6 +247,8 @@ class DatabaseService {
   void logoutUser() {
     log('Logged out user: ${_currentUser?.username}');
     _currentUser = null;
+    // Clear persisted session so auto-login does not trigger next launch
+    clearSession();
   }
 
   Future<UserModel?> _fetchUserById(int id) async {
