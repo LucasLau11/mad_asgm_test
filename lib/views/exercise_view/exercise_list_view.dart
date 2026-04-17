@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../controllers/exercise_controller.dart';
 import '../../controllers/pedometer_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../services/exercise_calorie_calculator.dart'; // ← ADD THIS
 import 'exercise_add_view.dart';
 import 'exercise_detail_view.dart';
 import 'exercise_live_view.dart';
@@ -21,13 +22,16 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
   PedometerController? _pedometer;
 
+  // ── Calorie calculator instance ─────────────────────────────────────────────
+  final CalorieCalculator _calorieCalculator = CalorieCalculator(); // ← ADD THIS
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pedometer =
-      Provider.of<PedometerController>(context, listen: false);
+          Provider.of<PedometerController>(context, listen: false);
 
       // Wire the auto-save callback BEFORE starting detection
       _pedometer!.onAutoSave = _handleAutoSave;
@@ -67,13 +71,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
     final title = _generateAutoTitle(startTime);
 
+    // ── Calculate calories from steps ────────────────────────────────────────
+    final calories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : null;
+
     final exercise = Exercise(
       title: title,
       type: ExerciseType.walking,
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      isAutoDetected: true, // ← locks numeric fields in detail view
+      energyExpended: calories,          // ← ADD THIS
+      isAutoDetected: true,
     );
 
     final success = await exerciseController.createExercise(exercise);
@@ -159,13 +169,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
     if (title.isEmpty) return;
 
+    // ── Calculate calories from steps ────────────────────────────────────────
+    final calories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : null;
+
     final exercise = Exercise(
       title: title,
       type: ExerciseType.walking,
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      isAutoDetected: true, // user saved from banner → also read-only
+      energyExpended: calories,          // ← ADD THIS
+      isAutoDetected: true,
     );
 
     final success = await exerciseController.createExercise(exercise);
@@ -186,7 +202,6 @@ class _ExerciseListViewState extends State<ExerciseListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: const Color(0xFFF5F5F5), //more grey white
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
@@ -290,6 +305,11 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     final minutes = elapsed.inMinutes;
     final steps = pedometer.autoDetectedSteps;
 
+    // ── Estimate calories for the banner ─────────────────────────────────────
+    final estimatedCalories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -345,13 +365,18 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
           const SizedBox(height: 10),
 
-          // Stats row
+          // Stats row — now includes calories
           Row(
             children: [
               _buildBannerStat(Icons.access_time, '$minutes min', 'Duration'),
               const SizedBox(width: 12),
-              if (steps > 0)
+              if (steps > 0) ...[
                 _buildBannerStat(Icons.directions_walk, '$steps', 'Steps'),
+                const SizedBox(width: 12),
+                // ── NEW: calories stat ──────────────────────────────────
+                _buildBannerStat(
+                    Icons.local_fire_department, '$estimatedCalories', 'Cal'),
+              ],
             ],
           ),
 
@@ -704,5 +729,4 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       ),
     );
   }
-
 }
