@@ -22,7 +22,8 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
   int _latestHeartRate = 0;
   double _todayWaterTotal = 0.0;
   double _latestWeight = 0.0;
-  final double _waterGoal = 2400.0;
+  double _waterGoal = 2400.0;
+  double _previousWeight = 0.0;
 
   // hold today's records for the today log
   List<HeartRateModel> _todayHeartRecords = [];
@@ -52,11 +53,13 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
 
     // latest weight
     double weight = weightRecords.isNotEmpty ? weightRecords.first.weightKg : 0.0;
+    double prevWeight = weightRecords.length >= 2 ? weightRecords[1].weightKg : 0.0;
 
     setState(() {
       _latestHeartRate = heartRate;
       _todayWaterTotal = waterTotal;
       _latestWeight = weight;
+      _previousWeight = prevWeight;
       _todayHeartRecords = heartRecords;
       _todayWaterRecords = waterRecords;
       _todayWeightRecords = weightRecords;
@@ -170,6 +173,81 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                     children: [
                       // water intake
                       Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            final TextEditingController goalController = TextEditingController(
+                              text: (_waterGoal / 1000).toStringAsFixed(1),
+                            );
+
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: const Text(
+                                  'Set Water Goal',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Enter your daily water goal (L)',
+                                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: goalController,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      autofocus: true,
+                                      decoration: InputDecoration(
+                                        suffixText: 'L',
+                                        hintText: '2.0',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                          borderSide: const BorderSide(color: Color(0xFF9FA8DA), width: 2),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      final double? newGoal = double.tryParse(goalController.text);
+                                      if (newGoal != null && newGoal > 0) {
+                                        setState(() {
+                                          _waterGoal = newGoal * 1000; // convert L to mL
+                                        });
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF9FA8DA),
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: const Text('Save'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -183,20 +261,22 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                                 ),
                               ],
                             ),
-                  
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Water intake',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Water intake',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                    const Spacer(),
+                                    const Icon(Icons.edit, size: 12, color: Colors.grey), // edit hint
+                                  ],
                                 ),
-                  
+
                                 const SizedBox(height: 6),
-                  
+
                                 Text(
                                   _todayWaterTotal == 0 ? '0 L' : '${(_todayWaterTotal / 1000).toStringAsFixed(1)} L',
                                   style: const TextStyle(
@@ -204,9 +284,9 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                  
+
                                 const SizedBox(height: 8),
-                  
+
                                 LinearProgressIndicator(
                                   value: waterProgress,
                                   backgroundColor: const Color(0xFFE8EAF6),
@@ -214,19 +294,17 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                                   borderRadius: BorderRadius.circular(4),
                                   minHeight: 6,
                                 ),
-                  
+
                                 const SizedBox(height: 6),
-                  
+
                                 Text(
                                   '${(waterProgress * 100).toInt()}% of ${(_waterGoal / 1000).toStringAsFixed(1)}L goal',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey
-                                  ),
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 ),
                               ],
                             ),
                           ),
+                        ),
                       ),
                   
                       const SizedBox(width: 12),
@@ -270,13 +348,37 @@ class _HealthMonitorPageState extends State<HealthMonitorPage> {
                   
                               const SizedBox(height: 6),
                   
-                              const Text(
-                                'Latest log',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey
-                                ),
-                              ),
+                              Builder(
+                                  builder: (_){
+                                    if(_latestWeight == 0 || _previousWeight ==0){
+                                      return const Text(
+                                          'Latest log',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey
+                                          ),
+                                      );
+                                    }
+                                    final diff = _latestWeight - _previousWeight;
+                                    final isGain = diff > 0;
+                                    return Row(
+                                      children: [
+                                        Icon(
+                                          isGain ? Icons.arrow_upward : Icons.arrow_downward,
+                                          size: 11,
+                                          color: isGain ? Colors.red : Colors.green,
+                                        ),
+                                        Text(
+                                          '${diff.abs().toStringAsFixed(1)} kg compared to previous.',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isGain ? Colors.red : Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                              )
                             ],
                           ),
                         ),
