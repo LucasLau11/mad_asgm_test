@@ -1,4 +1,4 @@
-import '../models/exercise.dart';
+import '../models/exercise_model/exercise_model.dart';
 
 class CalorieCalculator {
   // MET (Metabolic Equivalent of Task) values for different exercises

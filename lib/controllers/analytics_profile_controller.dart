@@ -1,4 +1,4 @@
-import '../models/analytics_profile_model.dart';
+import '../models/analytic_model/analytics_profile_model.dart';
 
 class AnalyticsProfileController {
   Future<AnalyticsProfileModel> fetchUserProfile() async {

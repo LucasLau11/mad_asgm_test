@@ -1,6 +1,6 @@
-import '../models/workout_model.dart';
-import '../models/workout_exercise_model.dart';
-import '../services/workout_database_service.dart';
+import '../models/workout_model/workout_model.dart';
+import '../models/workout_model/workout_exercise_model.dart';
+import '../services/database/workout_database_service.dart';
 
 class WorkoutController {
   // Singleton pattern

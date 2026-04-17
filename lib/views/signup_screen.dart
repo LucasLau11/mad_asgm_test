@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../controllers/database_service.dart';
+import '../services/database/heart_rate_database_service.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
 

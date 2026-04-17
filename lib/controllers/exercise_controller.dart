@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/exercise.dart';
-import '../services/exercise_database_service.dart';
+import '../models/exercise_model/exercise_model.dart';
+import '../services/database/exercise_database_service.dart';
 import '../services/exercise_calorie_calculator.dart';
 
 class ExerciseController extends ChangeNotifier {

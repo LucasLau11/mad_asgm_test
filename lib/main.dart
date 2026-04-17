@@ -13,16 +13,16 @@ import 'package:provider/provider.dart';
 import 'controllers/exercise_controller.dart';
 import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
-import 'models/analytics_app_state.dart';
+import 'models/analytic_model/analytics_app_state.dart';
 import 'views/login_screen.dart';
 
 // Your friend's module YP || YH || TW
-import 'views/exercise_list_view.dart';
-import 'views/workout_program_page.dart';
-import 'views/health_monitor_page.dart';
+import 'views/exercise_view/exercise_list_view.dart';
+import 'views/workout_view/workout_program_page.dart';
+import 'views/heart_rate_view/health_monitor_page.dart';
 
 // Analytics module (integrated)
-import 'views/analytics_view.dart';
+import 'views/analytic_view/analytics_view.dart';
 
 // Global analytics state — initialized before runApp
 final AnalyticsAppState analyticsAppState = AnalyticsAppState();

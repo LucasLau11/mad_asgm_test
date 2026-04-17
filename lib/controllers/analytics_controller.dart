@@ -1,4 +1,4 @@
-import '../models/analytics_goal_model.dart';
+import '../models/analytic_model/analytics_goal_model.dart';
 
 class AnalyticsController {
   final List<Map<String, dynamic>> _workoutHistory = [

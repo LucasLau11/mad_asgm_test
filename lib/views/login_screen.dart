@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mad_asgm/main.dart';
-import '../controllers/database_service.dart';
+import '../services/database/heart_rate_database_service.dart';
 import '../widgets/shared_widgets.dart';
 import 'signup_screen.dart';
 import 'package:provider/provider.dart';
