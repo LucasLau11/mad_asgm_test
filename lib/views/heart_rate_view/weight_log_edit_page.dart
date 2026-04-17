@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 import '../../services/database/heart_rate_database_service.dart';
 import '../../models/heart_rate_model/weight_model.dart';
 
 class WeightEditPage extends StatefulWidget {
-  final WeightModel record; // record passed from weight log page
+  final WeightModel record;
 
   const WeightEditPage({super.key, required this.record});
 
@@ -18,14 +20,30 @@ class _WeightEditPageState extends State<WeightEditPage> {
   late TextEditingController weightController;
   late TextEditingController noteController;
 
+  double _toDisplay(double kg, bool isMetric) =>
+      isMetric ? kg : kg * 2.20462;
+
+  double _toKg(double displayVal, bool isMetric) =>
+      isMetric ? displayVal : displayVal / 2.20462;
+
+  String _unitLabel(bool isMetric) => isMetric ? 'kg' : 'lbs';
+
   @override
   void initState() {
     super.initState();
-    // Pre-fill with existing record data
-    weightController = TextEditingController(
-      text: widget.record.weightKg.toStringAsFixed(1),
-    );
     noteController = TextEditingController(text: widget.record.note);
+    weightController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Set the initial value in the correct unit once context is available
+    final isMetric = context.read<AnalyticsAppState>().isMetric;
+    if (weightController.text.isEmpty) {
+      weightController.text =
+          _toDisplay(widget.record.weightKg, isMetric).toStringAsFixed(1);
+    }
   }
 
   @override
@@ -35,111 +53,95 @@ class _WeightEditPageState extends State<WeightEditPage> {
     noteController.dispose();
   }
 
-  // Save updated record
-  void _saveChanges() async {
+  void _saveChanges(bool isMetric) async {
     if (weightController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your weight.')),
-      );
+          const SnackBar(content: Text('Please enter your weight.')));
       return;
     }
 
-    double weight = double.tryParse(weightController.text) ?? 0;
-
-    if (weight <= 0) {
+    final displayVal = double.tryParse(weightController.text) ?? 0;
+    if (displayVal <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid weight.')),
-      );
+          const SnackBar(content: Text('Please enter a valid weight.')));
       return;
     }
+
+    // Convert back to kg
+    final weightKg = _toKg(displayVal, isMetric);
 
     WeightModel updatedRecord = WeightModel(
       id: widget.record.id,
-      weightKg: weight,
+      weightKg: weightKg,
       note: noteController.text,
-      createdOn: widget.record.createdOn, // keep original date
+      createdOn: widget.record.createdOn,
     );
 
     await dbService.editWeightRecord(updatedRecord);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Record updated!')),
-    );
-
-    Navigator.pop(context); // go back to weight log page
+        const SnackBar(content: Text('Record updated!')));
+    Navigator.pop(context);
   }
 
-  // Show delete confirmation as bottom sheet
   void _showDeleteBottomSheet() {
+    final isMetric = context.read<AnalyticsAppState>().isMetric;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
-              // Drag handle
               Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
               ),
-
               const SizedBox(height: 24),
-
-              // Delete icon
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.delete_outline,
+                    color: Colors.red, size: 28),
               ),
-
               const SizedBox(height: 16),
-
-              const Text(
-                'Delete Record?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-
+              const Text('Delete Record?',
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-
               Text(
                 'You\'re about to delete the weight record at ${_formatTime(widget.record.createdOn)}. This action cannot be undone.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                style:
+                const TextStyle(fontSize: 13, color: Colors.grey),
               ),
-
               const SizedBox(height: 20),
-
-              // Record preview box
+              // Record preview
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.surface : Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
                     Container(
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
+                          color: Colors.green, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -147,68 +149,62 @@ class _WeightEditPageState extends State<WeightEditPage> {
                       children: [
                         Text(
                           '${_formatDate(widget.record.createdOn)} - ${_formatTime(widget.record.createdOn)}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600),
                         ),
                         Text(
-                          '${widget.record.weightKg.toStringAsFixed(1)} kg${widget.record.note.isEmpty ? '' : ' - ${widget.record.note}'}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          '${_toDisplay(widget.record.weightKg, isMetric).toStringAsFixed(1)} ${_unitLabel(isMetric)}'
+                              '${widget.record.note.isEmpty ? '' : ' - ${widget.record.note}'}',
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // Cancel button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context), // close bottom sheet
+                  onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF9FA8DA),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // Yes, Delete button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
-                    await dbService.deleteWeightRecord(widget.record.id);
-                    Navigator.pop(context); // close bottom sheet
-                    Navigator.pop(context); // go back to weight log page
+                    await dbService
+                        .deleteWeightRecord(widget.record.id);
+                    Navigator.pop(context); // close sheet
+                    Navigator.pop(context); // go back
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEF9A9A),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Yes, Delete',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
+                  child: const Text('Yes, Delete',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
-
               const SizedBox(height: 8),
             ],
           ),
@@ -217,7 +213,6 @@ class _WeightEditPageState extends State<WeightEditPage> {
     );
   }
 
-  // Format "2026-03-01 08:30:00" -> "08:30 AM"
   String _formatTime(String dateTime) {
     if (dateTime.isEmpty) return '';
     try {
@@ -233,14 +228,15 @@ class _WeightEditPageState extends State<WeightEditPage> {
     }
   }
 
-  // Format "2026-03-01 08:30:00" -> "Today, Mar 1" or "Feb 28"
   String _formatDate(String dateTime) {
     if (dateTime.isEmpty) return '';
     try {
       DateTime dt = DateTime.parse(dateTime);
       DateTime now = DateTime.now();
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
       bool isToday = dt.year == now.year &&
           dt.month == now.month &&
           dt.day == now.day;
@@ -253,62 +249,61 @@ class _WeightEditPageState extends State<WeightEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+    final isMetric = context.watch<AnalyticsAppState>().isMetric;
 
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Edit Weight',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black),
-        ),
+        title: const Text('Edit Weight',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black)),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // ---- Editing Record Banner ----
+            // Edit record banner
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.surface : Colors.green,
+                  borderRadius: BorderRadius.circular(12)),
               child: Row(
                 children: [
                   Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                        color: Colors.white.withOpacity(0.3),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.edit,
+                        color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Editing Record',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      const Text('Editing Record',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white)),
                       Text(
                         'Logged at ${_formatTime(widget.record.createdOn)}',
-                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white70),
                       ),
                     ],
                   ),
@@ -318,12 +313,12 @@ class _WeightEditPageState extends State<WeightEditPage> {
 
             const SizedBox(height: 20),
 
-            // ---- Update Details Card ----
+            // edit record card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -336,67 +331,90 @@ class _WeightEditPageState extends State<WeightEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Update Details',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-
+                  const Text('Update Details',
+                      style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 16),
 
-                  // Weight input
-                  const Text('Weight (KG)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  // Weight input — label & hint change with unit
+                  Text('Weight (${_unitLabel(isMetric)})',
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     controller: weightController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9.]')),
                     ],
                     decoration: InputDecoration(
-                      suffixText: 'kg',
-                      suffixStyle: const TextStyle(color: Colors.grey),
+                      suffixText: _unitLabel(isMetric),
+                      suffixStyle:
+                      const TextStyle(color: Colors.grey),
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFEEEEEE)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFEEEEEE)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Colors.green),
+                        borderSide:
+                        const BorderSide(color: Colors.green),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
                   // Note input
-                  const Text('Note (Optional)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Note (Optional)',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     controller: noteController,
                     keyboardType: TextInputType.text,
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFEEEEEE)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFEEEEEE)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Colors.green),
+                        borderSide:
+                        const BorderSide(color: Colors.green),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                     ),
                   ),
 
@@ -407,19 +425,18 @@ class _WeightEditPageState extends State<WeightEditPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _saveChanges,
+                      onPressed: () => _saveChanges(isMetric),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9FA8DA),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text(
-                        'Save Changes',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
+                      child: const Text('Save Changes',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
 
@@ -436,13 +453,12 @@ class _WeightEditPageState extends State<WeightEditPage> {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text(
-                        'Delete Record',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
+                      child: const Text('Delete Record',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

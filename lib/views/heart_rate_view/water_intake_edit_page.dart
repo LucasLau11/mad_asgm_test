@@ -4,7 +4,7 @@ import '../../services/database/heart_rate_database_service.dart';
 import '../../models/heart_rate_model/water_intake_model.dart';
 
 class WaterIntakeEditPage extends StatefulWidget {
-  final WaterIntakeModel record; // the record passed from the previous page
+  final WaterIntakeModel record;
 
   const WaterIntakeEditPage({super.key, required this.record});
 
@@ -59,9 +59,9 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
       id: widget.record.id,
       amountMl: amount,
       beverageType: _selectedBeverageType,
-      time: widget.record.time,       // keep the original time
+      time: widget.record.time,
       note: noteController.text,
-      createdOn: widget.record.createdOn, // keep the original date
+      createdOn: widget.record.createdOn,
     );
 
     await dbService.editWaterRecord(updatedRecord);
@@ -77,7 +77,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
   void _showDeleteBottomSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -132,7 +132,8 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.surface : Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -188,7 +189,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
 
               const SizedBox(height: 10),
 
-              // Yes, Delete button
+              // Delete button
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -224,10 +225,10 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: Colors.black),
@@ -245,12 +246,14 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ---- Editing Record Banner ----
+            // Edit record banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF9FA8DA),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.surface  // dark mode → surface color
+                    : Color(0xFF9FA8DA),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -288,12 +291,12 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
 
             const SizedBox(height: 20),
 
-            // ---- Update Details Card ----
+            // Update box
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -320,9 +323,14 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -346,6 +354,12 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     value: _selectedBeverageType,
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
+                    dropdownColor: Colors.grey[350],
                     items: _beverageTypes.map((String type) {
                       return DropdownMenuItem(
                         value: type,
@@ -359,7 +373,7 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                     },
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -382,11 +396,16 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                   const Text('Time', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     readOnly: true,
                     controller: TextEditingController(text: widget.record.time),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
@@ -405,11 +424,16 @@ class _WaterIntakeEditPageState extends State<WaterIntakeEditPage> {
                   const Text('Note (Optional)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
+                    style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.grey
+                    ),
                     controller: noteController,
                     keyboardType: TextInputType.text,
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Colors.grey[350],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: Color(0xFFEEEEEE)),

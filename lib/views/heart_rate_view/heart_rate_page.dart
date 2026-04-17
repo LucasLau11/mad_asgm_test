@@ -28,7 +28,7 @@ class _HeartRatePageState extends State<HeartRatePage> {
   final List<double> _redValues = [];
 
   // Show the live average so user can see what value their camera reads
-  // This helps us debug the threshold
+  // This helps debug the threshold
   double _liveAverage = 0;
 
   final int _measurementDuration = 15;
@@ -122,7 +122,7 @@ class _HeartRatePageState extends State<HeartRatePage> {
         _secondsRemaining = i - 1;
       });
     }
-    // Countdown done — stop
+    // Countdown done
     _stopMeasuring();
   }
 
@@ -166,7 +166,7 @@ class _HeartRatePageState extends State<HeartRatePage> {
   }
 
   void _processCameraFrame(CameraImage image) {
-    // Skip if we are in the process of stopping
+    // Skip if in the process of stopping
     if (_isStopping) return;
 
     try {
@@ -181,11 +181,10 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
       double average = sum / count;
 
-      // FIX: Use a much more relaxed threshold
       // Without finger: average is HIGH (bright, flash lighting up everything)
       // With finger: average DROPS because finger blocks most light
-      // The exact threshold depends on the device — we use 200 as default
-      // and show the live average so user can see what their device reads
+      // The exact threshold depends on the device — 200 is used as default
+      // Show the live average so user can see what their device reads
       bool fingerOn = average < 200;
 
       if (mounted) {
@@ -244,8 +243,8 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
     // Step 3: Try different thresholds and min distances
     // Use lower threshold and smaller min distance to catch more peaks
-    int minPeakDistance = 10; // lowered from 20
-    double threshold = 0.3;   // lowered from 0.5
+    int minPeakDistance = 10;
+    double threshold = 0.3;
 
     List<int> peakIndices = [];
     for (int i = 1; i < normalized.length - 1; i++) {
@@ -328,10 +327,10 @@ class _HeartRatePageState extends State<HeartRatePage> {
     String status = _currentBpm == 0 ? '' : HeartRateModel.getStatus(_currentBpm);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: Colors.black),
@@ -351,9 +350,13 @@ class _HeartRatePageState extends State<HeartRatePage> {
                 MaterialPageRoute(builder: (context) => const HeartRateHistoryPage()),
               );
             },
-            child: const Text(
+            child: Text(
               'History',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black : Colors.red,
+                  fontWeight: FontWeight.w600
+              ),
             ),
           ),
         ],
@@ -510,12 +513,12 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
             const SizedBox(height: 16),
 
-            // ---- Current Reading Card ----
+            // Current reading
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -527,13 +530,13 @@ class _HeartRatePageState extends State<HeartRatePage> {
               ),
               child: Column(
                 children: [
-                  const Text('Current Reading', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                   Text('Current Reading', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 8),
                   Text(
                     _currentBpm == 0 ? '--' : '$_currentBpm',
                     style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
                   ),
-                  const Text('BPM', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  Text('BPM', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 12),
                   if (_currentBpm > 0)
                     Row(
@@ -577,7 +580,7 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
             const SizedBox(height: 20),
 
-            // ---- Start Measuring Button ----
+            // Start measuring button
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -599,7 +602,7 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
             const SizedBox(height: 10),
 
-            // ---- Save Reading Button ----
+            // Save reading button
             SizedBox(
               width: double.infinity,
               height: 50,

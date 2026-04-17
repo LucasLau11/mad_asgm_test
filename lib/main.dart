@@ -67,6 +67,10 @@ class MyApp extends StatelessWidget {
               ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF7C6FDC),
+                brightness: Brightness.light,
+                surface: Colors.white,
+                onSurface: Colors.black87,
+                onSurfaceVariant: Colors.grey,
               ),
               switchTheme: SwitchThemeData(
                 thumbColor: WidgetStateProperty.all(Colors.white),
@@ -84,14 +88,21 @@ class MyApp extends StatelessWidget {
               primarySwatch: Colors.purple,
               fontFamily: 'SF Pro Display',
               appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFF121212),
-                foregroundColor: Colors.white,
+                backgroundColor: Color(0xFF1E1E1E),
+                foregroundColor: Colors.grey,
                 elevation: 0,
               ),
               cardColor: const Color(0xFF1E1E1E),
+              textTheme: const TextTheme(
+                bodyLarge: TextStyle(fontSize: 16, color: Colors.white),
+                bodyMedium: TextStyle(fontSize: 14, color: Colors.white),
+              ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF7C6FDC),
                 brightness: Brightness.dark,
+                surface: const Color(0xFF1E1E1E),
+                onSurface: Colors.white,
+                onSurfaceVariant: Colors.grey,
               ),
               switchTheme: SwitchThemeData(
                 thumbColor: WidgetStateProperty.all(Colors.white),
@@ -137,6 +148,8 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: const FitPulseHeader(),
       body: IndexedStack(
@@ -148,7 +161,7 @@ class _MainShellState extends State<MainShell> {
         onTap: (index) => setState(() => _selectedIndex = index),
         selectedItemColor: const Color(0xFF7C6FDC),
         unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         items: const [
@@ -170,8 +183,12 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final dividerColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
+    
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
@@ -205,7 +222,7 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(color: const Color(0xFFEEEEEE), height: 1),
+        child: Container(color: dividerColor, height: 1),
       ),
     );
   }
