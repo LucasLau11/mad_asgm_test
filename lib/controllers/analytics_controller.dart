@@ -63,7 +63,7 @@ class AnalyticsController {
   // ══════════════════════════════════════════════════════════════════════════
   //  DATA LOADING — reads both databases and builds all derived values
   // ══════════════════════════════════════════════════════════════════════════
-  Future<void> loadData() async {
+  Future<void> loadData(int userId) async {
     final now = DateTime.now();
 
     // ── 1. Load cardio exercises (ExerciseType: walking/jogging/running) ───
@@ -74,9 +74,8 @@ class AnalyticsController {
     // We treat each saved workout as a completed session logged on its
     // creation date. We read all workouts and their exercises to infer
     // muscle group and use the workout's durationMinutes for calories.
-    final allWorkouts = await WorkoutDatabaseService().getAllWorkouts();
+    final workoutHistoryData = await WorkoutDatabaseService().getHistoryByUserId(userId);
 
-    // ── 3. Build WorkoutEntry list (last 7 days) for the ML pipeline ───────
     final entries = <WorkoutEntry>[];
 
     // From cardio exercises
@@ -94,29 +93,25 @@ class AnalyticsController {
 
     // From strength/core workouts — fetch exercises for each workout to
     // map their names into the knowledge base for a richer signal.
-    for (final workout in allWorkouts) {
-      // Use workout createdAt if available; fall back to now
-      // WorkoutModel doesn't store a date, so we assume recent completions.
-      // If your WorkoutModel gains a completedAt field, swap it in here.
-      // For now we treat every saved workout as completed today (daysAgo = 0).
-      final workoutExercises =
-      await WorkoutDatabaseService().getExercisesForWorkout(workout.id);
-      if (workoutExercises.isEmpty) continue;
-      final firstName = workoutExercises.first.name;
+    for (final history in workoutHistoryData) {
+      final completedAt = DateTime.parse(history['completedAt']);
+      final daysAgo = now.difference(completedAt).inDays;
+      if (daysAgo > 7) continue;
+
       entries.add(WorkoutEntry(
-        exercise: firstName,
-        detail: '${workout.durationMinutes ?? workout.exerciseCount ?? 1} ${workout.durationMinutes != null ? "min" : "sets"}',
-        daysAgo: 0,
+        exercise: history['workoutName'],
+        detail: '${history['durationMinutes']} min',
+        daysAgo: daysAgo,
       ));
     }
 
     _workoutHistory = entries;
 
     // ── 4. Build calorie chart data ────────────────────────────────────────
-    _buildCalorieChartData(exercises, now);
+    _buildCalorieChartData(exercises,workoutHistoryData, now);
 
     // ── 5. Compute summary stats ───────────────────────────────────────────
-    _computeStats(exercises, now);
+    _computeStats(exercises, workoutHistoryData, now);
   }
 
   // ── Exercise type → human-readable name (matches knowledge base keys) ───
@@ -129,7 +124,7 @@ class AnalyticsController {
   }
 
   // ── Build chart data from exercise DB ───────────────────────────────────
-  void _buildCalorieChartData(List<Exercise> exercises, DateTime now) {
+  void _buildCalorieChartData(List<Exercise> exercises, List<Map<String, dynamic>> history,DateTime now) {
     // Daily — last 7 days, one bar per day
     final dailyKcal = List<double>.filled(7, 0);
     for (final ex in exercises) {
@@ -158,7 +153,28 @@ class AnalyticsController {
         monthlyKcal[11 - monthsAgo] += (ex.energyExpended ?? 0).toDouble();
       }
     }
+    for (final h in history) {
+      final date = DateTime.parse(h['completedAt']);
+      final kcal = (h['caloriesBurned'] as num?)?.toDouble() ?? 0.0;
+      final daysAgo = now.difference(date).inDays;
 
+      // Add to Daily (last 7 days)
+      if (daysAgo >= 0 && daysAgo < 7) {
+        dailyKcal[6 - daysAgo] += kcal;
+      }
+
+      // Add to Weekly (last 4 weeks)
+      if (daysAgo >= 0 && daysAgo < 28) {
+        final weekIdx = daysAgo ~/ 7;
+        weeklyKcal[3 - weekIdx] += kcal;
+      }
+
+      // Add to Monthly (last 12 months)
+      final monthsAgo = (now.year - date.year) * 12 + (now.month - date.month);
+      if (monthsAgo >= 0 && monthsAgo < 12) {
+        monthlyKcal[11 - monthsAgo] += kcal;
+      }
+    }
     _calorieData = {
       'Daily':   dailyKcal,
       'Weekly':  weeklyKcal,
@@ -167,7 +183,7 @@ class AnalyticsController {
   }
 
   // ── Summary stats ────────────────────────────────────────────────────────
-  void _computeStats(List<Exercise> exercises, DateTime now) {
+  void _computeStats(List<Exercise> exercises,List<Map<String, dynamic>> history, DateTime now) {
     int last7 = 0;
     int allTime = 0;
     final dailyTotals = <String, int>{};
@@ -180,6 +196,20 @@ class AnalyticsController {
       if (daysAgo < 7) last7 += kcal;
 
       final dayKey = ex.startTime.toIso8601String().substring(0, 10);
+      dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + kcal;
+    }
+    for (final h in history) {
+      final kcalDouble = (h['caloriesBurned'] as num?)?.toDouble() ?? 0.0;
+      final kcal = kcalDouble.round(); // Convert to int for consistency with allTime
+      final date = DateTime.parse(h['completedAt']);
+
+      // Update totals inline instead of calling addData
+      allTime += kcal;
+
+      final daysAgo = now.difference(date).inDays;
+      if (daysAgo < 7) last7 += kcal;
+
+      final dayKey = h['completedAt'].substring(0, 10);
       dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + kcal;
     }
 
