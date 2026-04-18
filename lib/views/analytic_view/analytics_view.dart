@@ -392,7 +392,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(10),
@@ -403,33 +403,38 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       child: Stack(
         children: [
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 4),
               Text(
                 '${goal.progress}/${goal.target} $displayType',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: textColor.withOpacity(0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    progress >= 1.0 ? Colors.green : const Color(0xFF5B4FCF),
+              SizedBox(
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: textColor.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      progress >= 1.0 ? Colors.green : const Color(0xFF5B4FCF),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 6),
-              Text(goal.deadline, style: TextStyle(fontSize: 12, color: subtitleColor)),
+              Text(goal.deadline, style: TextStyle(fontSize: 12, color: subtitleColor), textAlign: TextAlign.center),
               if (goal.reason.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   goal.reason,
                   style: TextStyle(
                       fontSize: 12, color: subtitleColor, fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
                 ),
               ],
               if (hasMismatch) ...[
@@ -437,9 +442,10 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                 Text(
                   'Goal was set in a different unit system. Tap edit to update it.',
                   style: TextStyle(fontSize: 11, color: Colors.orange.shade700, height: 1.4),
+                  textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 28),
+              const SizedBox(height: 40),
             ],
           ),
 

@@ -7,32 +7,42 @@
 //workout program module (TW)
 //flutter pub add google_ml_kit
 //flutter pub add image_picker
+// background step tracking
+// flutter pub add flutter_foreground_task
 
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 import 'controllers/exercise_controller.dart';
 import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
 import 'models/analytic_model/analytics_app_state.dart';
 import 'services/database/heart_rate_database_service.dart';
+import 'services/step_tracking_service.dart';
 import 'views/login_screen.dart';
 
-// Your friend's module YP || YH || TW
 import 'views/exercise_view/exercise_list_view.dart';
 import 'views/workout_view/workout_program_page.dart';
 import 'views/heart_rate_view/health_monitor_page.dart';
-
-// Analytics module (integrated)
 import 'views/analytic_view/analytics_view.dart';
 
-// Global analytics state — initialized before runApp
+// MUST be top-level in main.dart with @pragma so tree-shaker keeps it.
+// References StepTaskHandler (public class in step_tracking_service.dart).
+@pragma('vm:entry-point')
+void startStepTaskCallback() {
+  FlutterForegroundTask.setTaskHandler(StepTaskHandler());
+}
+
 final AnalyticsAppState analyticsAppState = AnalyticsAppState();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load analytics/goals data from storage before showing UI
   await analyticsAppState.loadFromStorage();
+
+  // Configure foreground service options before runApp.
+  // The service is actually started in PedometerController.startAutoDetect()
+  // which is called from ExerciseListView.initState().
+  StepTrackingService.init();
 
   runApp(const MyApp());
 }
@@ -47,11 +57,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ExerciseController()),
         ChangeNotifierProvider(create: (_) => PedometerController()),
         ChangeNotifierProvider(create: (_) => LocationController()),
-        // Analytics module state — provides AnalyticsAppState to the whole tree
         ChangeNotifierProvider<AnalyticsAppState>.value(value: analyticsAppState),
       ],
       child: Consumer<AnalyticsAppState>(
-        // Rebuild MaterialApp when dark mode changes in analytics module
         builder: (context, analyticsState, _) {
           return MaterialApp(
             title: 'Fitness Tracker',
@@ -115,7 +123,6 @@ class MyApp extends StatelessWidget {
                 trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
               ),
             ),
-            // SplashRoute handles the auto-login check before routing
             home: const SplashRoute(),
           );
         },
@@ -124,16 +131,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SplashRoute
-//
-//  Shown for a brief moment on every cold-start.  Attempts to restore a
-//  persisted session; if successful it navigates directly to MainShell,
-//  otherwise it falls through to LoginScreen.
-// ─────────────────────────────────────────────────────────────────────────────
 class SplashRoute extends StatefulWidget {
   const SplashRoute({Key? key}) : super(key: key);
-
   @override
   State<SplashRoute> createState() => _SplashRouteState();
 }
@@ -146,47 +145,27 @@ class _SplashRouteState extends State<SplashRoute> {
   }
 
   Future<void> _tryAutoLogin() async {
-    // Attempt to restore a saved session
     final user = await DatabaseService().tryRestoreSession();
-
     if (!mounted) return;
-
     if (user != null) {
-      // Session restored — reload data for this user then go to main shell
-      await Provider.of<ExerciseController>(context, listen: false)
-          .reloadForCurrentUser();
-      await Provider.of<AnalyticsAppState>(context, listen: false)
-          .onUserLoggedIn();
-
+      await Provider.of<ExerciseController>(context, listen: false).reloadForCurrentUser();
+      await Provider.of<AnalyticsAppState>(context, listen: false).onUserLoggedIn();
       if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainShell()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainShell()));
     } else {
-      // No saved session — go to login
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Simple branded splash while the session check runs
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/fitpulse.png',
-              width: 100,
-              height: 100,
-            ),
+            Image.asset('assets/images/fitpulse.png', width: 100, height: 100),
             const SizedBox(height: 24),
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C6FDC)),
@@ -202,7 +181,6 @@ class _SplashRouteState extends State<SplashRoute> {
 class MainShell extends StatefulWidget {
   final int initialIndex;
   const MainShell({Key? key, this.initialIndex = 0}) : super(key: key);
-
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -226,13 +204,9 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: const FitPulseHeader(),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -273,11 +247,7 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/images/fitpulse.png',
-            width: 42,
-            height: 42,
-          ),
+          Image.asset('assets/images/fitpulse.png', width: 42, height: 42),
           const SizedBox(width: 10),
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(

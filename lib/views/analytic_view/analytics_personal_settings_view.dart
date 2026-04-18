@@ -94,29 +94,33 @@ class _AnalyticsPersonalSettingsViewState
                 const SizedBox(height: 12),
                 _card(
                   cardColor: cardColor,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Username : ${appState.username}',
-                          style: TextStyle(fontSize: 15, color: textColor)),
-                      OutlinedButton(
-                        onPressed: () => _showChangeUsernameDialog(
-                            context, appState, isDark),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          side: BorderSide(
-                              color: isDark
-                                  ? Colors.grey.shade600
-                                  : Colors.grey.shade400),
-                          foregroundColor: textColor,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  child: SizedBox(
+                    height: 48,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('Username : ${appState.username}',
+                            style: TextStyle(fontSize: 15, color: textColor)),
+                        OutlinedButton(
+                          onPressed: () => _showChangeUsernameDialog(
+                              context, appState, isDark),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
+                            side: BorderSide(
+                                color: isDark
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade400),
+                            foregroundColor: textColor,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child:
+                          const Text('Change', style: TextStyle(fontSize: 13)),
                         ),
-                        child:
-                        const Text('Change', style: TextStyle(fontSize: 13)),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -176,7 +180,7 @@ class _AnalyticsPersonalSettingsViewState
   Widget _card({required Widget child, required Color cardColor}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
           color: cardColor, borderRadius: BorderRadius.circular(10)),
       child: child,

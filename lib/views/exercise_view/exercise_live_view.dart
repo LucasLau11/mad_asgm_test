@@ -37,13 +37,14 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
   // Workout state
   bool _isTracking = false;
 
-  // Wall-clock based timing (fixes timer freeze when phone locked)
+  // Wall-clock based timing
   DateTime? _startTime;
   Duration _pausedDuration = Duration.zero;
   DateTime? _pausedAt;
   int _elapsedSeconds = 0;
 
-  // Initial step count
+  // Step baseline — captured right before startTracking() so that
+  // sessionSteps always reads 0 at the start of this live session.
   int _initialSteps = 0;
 
   // Goals from settings
@@ -137,6 +138,13 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     final locationController =
     Provider.of<LocationController>(context, listen: false);
 
+    // ── Snapshot the current hardware step count BEFORE startTracking() ──────
+    // resetSession() anchors _sessionStartSteps = _totalSteps.
+    // Because _totalSteps is updated via the auto-detect stream (which is still
+    // subscribed), this captures the correct baseline and sessionSteps will
+    // read 0 at the start of the live session.
+    pedometerController.resetSession();
+
     final now = DateTime.now();
     setState(() {
       _isTracking = true;
@@ -151,13 +159,16 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
     await WakelockPlus.enable();
 
-    pedometerController.resetSession();
     locationController.resetRoute();
 
     await pedometerController.startTracking();
     await locationController.startTracking();
 
+    // Capture the baseline AFTER startTracking() subscribes, so _totalSteps
+    // is fully up-to-date from the hardware sensor.
     _initialSteps = pedometerController.totalSteps;
+    // Re-anchor in case a step event fired between resetSession() and here.
+    pedometerController.resetSession();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

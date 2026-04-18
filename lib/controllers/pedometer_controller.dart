@@ -1,26 +1,11 @@
+// lib/controllers/pedometer_controller.dart
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 
-// ── Auto-Walk Detection + Auto-Save ───────────────────────────────────────────
-//
-// BEHAVIOUR
-//   • Cadence is sampled every 10 s (same as before).
-//   • After CONFIRM_WINDOWS consecutive active windows → walk detected.
-//   • After IDLE_RESET_WINDOWS of no steps  → walk stopped.
-//     At that point the walk is AUTO-SAVED via the [onAutoSave] callback
-//     instead of just resetting silently.
-//   • Hard cap: if a walk exceeds MAX_AUTO_DETECT_MINUTES without stopping,
-//     it is force-saved to avoid recording huge sessions / draining battery.
-//   • The saved Exercise will have isAutoDetected = true, so the detail view
-//     can lock the numeric fields.
-//
-// CHANGES vs previous version
-//   • Added [onAutoSave] callback — set from ExerciseListView.
-//   • Added _autoSaveTimer for the MAX_AUTO_DETECT_MINUTES cap.
-//   • _triggerAutoSave() builds the Exercise and fires the callback.
-//   • resetAutoDetect() cancels the save timer too.
+import '../services/step_tracking_service.dart';
+import '../main.dart' show startStepTaskCallback;
 
 typedef AutoSaveCallback = void Function({
 required DateTime startTime,
@@ -29,63 +14,51 @@ required int durationMinutes,
 });
 
 class PedometerController extends ChangeNotifier {
-  // ── Step counting ───────────────────────────────────────────────────────────
-  int _totalSteps = 0;
-  int _sessionSteps = 0;
+  // ── Step counts ─────────────────────────────────────────────────────────────
+  int _totalSteps        = 0;
+  int _sessionSteps      = 0;
   int _sessionStartSteps = 0;
 
-  // ── Pedometer streams ───────────────────────────────────────────────────────
-  StreamSubscription<StepCount>? _manualStepSubscription;
-  StreamSubscription<StepCount>? _autoDetectStepSubscription;
+  // ── Live-session streams ────────────────────────────────────────────────────
+  StreamSubscription<StepCount>?        _manualStepSubscription;
   StreamSubscription<PedestrianStatus>? _pedestrianStatusSubscription;
 
   // ── Status ──────────────────────────────────────────────────────────────────
-  bool _isTracking = false;
-  bool _isWalking = false;
+  bool    _isTracking = false;
+  bool    _isWalking  = false;
   String? _error;
 
-  // ── Auto-walk detection state ───────────────────────────────────────────────
-  static const int _walkCadenceThreshold = 40; // steps/min minimum
-  static const int _confirmWindows = 3;         // consecutive windows to confirm
-  static const int _idleResetWindows = 6;       // idle windows → auto-save + reset
-
-  /// Hard cap: auto-save the walk after this many minutes even if still active.
-  /// Prevents runaway sessions and reduces battery impact.
-  static const int maxAutoDetectMinutes = 90;
-
-  Timer? _cadenceTimer;
-  Timer? _autoSaveTimer; // fires after maxAutoDetectMinutes
-  int _lastCadenceStepCount = 0;
-  int _confirmCount = 0;
-  int _idleCount = 0;
-
-  bool _isAutoWalkDetected = false;
-  bool _autoDetectDismissed = false;
+  // ── Auto-walk state ─────────────────────────────────────────────────────────
+  bool      _isAutoWalkDetected  = false;
+  bool      _autoDetectDismissed = false;
+  bool      _autoDetectPaused    = false;
   DateTime? _autoDetectStartTime;
-  int _autoDetectBaseSteps = 0;
+  int       _autoDetectBaseSteps = 0;
 
-  /// Called when the controller decides the walk is over (idle timeout or
-  /// max-duration cap). The listener (ExerciseListView) creates the Exercise.
+  // ── Guard so the background service only starts once per app lifetime ────────
+  bool _serviceStarted = false;
+
   AutoSaveCallback? onAutoSave;
 
   // ── Getters ─────────────────────────────────────────────────────────────────
-  int get totalSteps => _totalSteps;
-  int get sessionSteps => _sessionSteps;
-  bool get isTracking => _isTracking;
-  bool get isWalking => _isWalking;
-  String? get error => _error;
+  int     get totalSteps   => _totalSteps;
+  int     get sessionSteps => _sessionSteps;
+  bool    get isTracking   => _isTracking;
+  bool    get isWalking    => _isWalking;
+  String? get error        => _error;
 
-  bool get isAutoWalkDetected => _isAutoWalkDetected && !_autoDetectDismissed;
+  // Banner is visible only when a walk is active, not dismissed, and not paused
+  // (paused means the user is inside a live tracking session).
+  bool get isAutoWalkDetected =>
+      _isAutoWalkDetected && !_autoDetectDismissed && !_autoDetectPaused;
 
-  int get autoDetectedSteps =>
-      _isAutoWalkDetected
-          ? (_totalSteps - _autoDetectBaseSteps).clamp(0, 999999)
-          : 0;
+  int get autoDetectedSteps => _isAutoWalkDetected
+      ? (_totalSteps - _autoDetectBaseSteps).clamp(0, 999999)
+      : 0;
 
   DateTime? get autoDetectStartTime => _autoDetectStartTime;
 
-  // ── Lifecycle ───────────────────────────────────────────────────────────────
-
+  // ── Permissions ─────────────────────────────────────────────────────────────
   Future<bool> initialize() async {
     try {
       final status = await Permission.activityRecognition.request();
@@ -102,26 +75,76 @@ class PedometerController extends ChangeNotifier {
     }
   }
 
-  // ── Manual session tracking ─────────────────────────────────────────────────
+  // ── Background service connection ────────────────────────────────────────────
+  void connectToService() {
+    StepTrackingService.removeDataCallback(_onServiceData);
+    StepTrackingService.addDataCallback(_onServiceData);
+  }
 
+  void _onServiceData(Object data) {
+    if (data is! Map) return;
+
+    // Raw step count update
+    if (data.containsKey(kMsgStepCount)) {
+      _totalSteps = data[kMsgStepCount] as int;
+      if (_isTracking) {
+        if (_sessionStartSteps == 0) _sessionStartSteps = _totalSteps;
+        _sessionSteps = (_totalSteps - _sessionStartSteps).clamp(0, 999999);
+      }
+      notifyListeners();
+      return;
+    }
+
+    // Walk started — background service confirmed cadence
+    if (data.containsKey(kMsgWalkStarted)) {
+      if (_autoDetectPaused) return;
+      final epochMs = data[kMsgWalkStarted] as int;
+      _isAutoWalkDetected  = true;
+      _autoDetectDismissed = false;
+      _autoDetectStartTime = DateTime.fromMillisecondsSinceEpoch(epochMs);
+      _autoDetectBaseSteps = _totalSteps;
+      notifyListeners();
+      return;
+    }
+
+    // Walk stopped — fire auto-save then clear state
+    if (data.containsKey(kMsgWalkStopped)) {
+      if (_autoDetectPaused) return;
+      final payload    = data[kMsgWalkStopped] as Map;
+      final steps      = (payload['steps']           as int).clamp(0, 999999);
+      final duration   =  payload['durationMinutes'] as int;
+      final startEpoch =  payload['startEpoch']      as int;
+      final startTime  = DateTime.fromMillisecondsSinceEpoch(startEpoch);
+
+      onAutoSave?.call(
+        startTime:       startTime,
+        steps:           steps,
+        durationMinutes: duration,
+      );
+
+      _resetAutoDetectState();
+      notifyListeners();
+      return;
+    }
+  }
+
+  // ── Manual live-session tracking ─────────────────────────────────────────────
   Future<void> startTracking() async {
     if (_isTracking) return;
-
     try {
       _manualStepSubscription = Pedometer.stepCountStream.listen(
-        _onStepCount,
+        _onLiveStepCount,
         onError: _onStepCountError,
       );
       _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
         _onPedestrianStatus,
-        onError: _onPedestrianStatusError,
+        onError: (_) {},
       );
-
       _isTracking = true;
-      _error = null;
+      _error      = null;
       notifyListeners();
     } catch (e) {
-      _error = 'Failed to start tracking: $e';
+      _error      = 'Failed to start tracking: $e';
       _isTracking = false;
       notifyListeners();
     }
@@ -138,40 +161,53 @@ class PedometerController extends ChangeNotifier {
 
   void resetSession() {
     _sessionStartSteps = _totalSteps;
-    _sessionSteps = 0;
+    _sessionSteps      = 0;
     notifyListeners();
   }
 
-  // ── Auto-walk detection public API ──────────────────────────────────────────
+  // ── Auto-detect public API ───────────────────────────────────────────────────
+
+  /// Idempotent — safe to call every time a widget mounts.
+  /// The background service is only started once per app lifetime.
+  Future<void> ensureAutoDetectRunning() async {
+    if (_serviceStarted) {
+      // Service already running — just re-register callback in case
+      // the widget was rebuilt or remounted.
+      connectToService();
+      return;
+    }
+    await startAutoDetect();
+  }
 
   Future<void> startAutoDetect() async {
-    if (_cadenceTimer != null) return;
-
     final ok = await initialize();
     if (!ok) return;
-
-    _autoDetectStepSubscription ??= Pedometer.stepCountStream.listen(
-      _onStepCount,
-      onError: _onStepCountError,
+    await StepTrackingService.startService(
+      taskCallback: startStepTaskCallback,
     );
-
-    _lastCadenceStepCount = _totalSteps;
-
-    _cadenceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _evaluateCadence();
-    });
+    connectToService();
+    _autoDetectPaused = false;
+    _serviceStarted   = true;
   }
 
   void stopAutoDetect() {
-    _cadenceTimer?.cancel();
-    _cadenceTimer = null;
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = null;
+    StepTrackingService.removeDataCallback(_onServiceData);
+    StepTrackingService.stopService();
+    _serviceStarted = false;
+    _resetAutoDetectState();
+    notifyListeners();
+  }
 
-    _autoDetectStepSubscription?.cancel();
-    _autoDetectStepSubscription = null;
+  Future<void> pauseAutoDetect() async {
+    if (_autoDetectPaused) return;
+    _autoDetectPaused = true;
+    StepTrackingService.pauseDetection();
+  }
 
-    _resetInternalState();
+  Future<void> resumeAutoDetect() async {
+    if (!_autoDetectPaused) return;
+    _autoDetectPaused = false;
+    StepTrackingService.resumeDetection();
     notifyListeners();
   }
 
@@ -180,110 +216,29 @@ class PedometerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Full reset — called after the user manually starts a live workout,
-  /// or after an auto-save has been processed by the listener.
   void resetAutoDetect() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = null;
-
-    _isAutoWalkDetected = false;
-    _autoDetectDismissed = false;
-    _autoDetectStartTime = null;
-    _autoDetectBaseSteps = 0;
-    _confirmCount = 0;
-    _idleCount = 0;
-    _lastCadenceStepCount = _totalSteps;
+    _resetAutoDetectState();
     notifyListeners();
   }
 
-  // ── Private helpers ─────────────────────────────────────────────────────────
-
-  void _resetInternalState() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = null;
-    _isAutoWalkDetected = false;
+  void _resetAutoDetectState() {
+    _isAutoWalkDetected  = false;
     _autoDetectDismissed = false;
     _autoDetectStartTime = null;
     _autoDetectBaseSteps = 0;
-    _confirmCount = 0;
-    _idleCount = 0;
   }
 
-  void _evaluateCadence() {
-    final stepsDelta = _totalSteps - _lastCadenceStepCount;
-    _lastCadenceStepCount = _totalSteps;
-
-    final cadencePerMin = stepsDelta * 6; // 10-s window → steps/min
-
-    if (cadencePerMin >= _walkCadenceThreshold) {
-      _idleCount = 0;
-      _confirmCount++;
-
-      if (!_isAutoWalkDetected && _confirmCount >= _confirmWindows) {
-        // ── Walk confirmed ─────────────────────────────────────────────
-        _isAutoWalkDetected = true;
-        _autoDetectDismissed = false;
-
-        _autoDetectStartTime = DateTime.now().subtract(
-          Duration(seconds: _confirmWindows * 10),
-        );
-        _autoDetectBaseSteps = _totalSteps;
-
-        // Start the hard-cap timer
-        _autoSaveTimer?.cancel();
-        _autoSaveTimer = Timer(
-          Duration(minutes: maxAutoDetectMinutes),
-              () => _triggerAutoSave(reason: 'max_duration'),
-        );
-
-        notifyListeners();
-      }
-    } else {
-      if (_isAutoWalkDetected) {
-        _idleCount++;
-        if (_idleCount >= _idleResetWindows) {
-          // Stopped walking → auto-save then reset
-          _triggerAutoSave(reason: 'idle');
-        }
-      } else {
-        // Decay confirm count when not yet confirmed
-        _confirmCount = (_confirmCount - 1).clamp(0, _confirmWindows);
-      }
-    }
-  }
-
-  /// Fires [onAutoSave] then resets state so the next walk can be detected.
-  void _triggerAutoSave({required String reason}) {
-    if (!_isAutoWalkDetected) return;
-
-    final startTime = _autoDetectStartTime ?? DateTime.now();
-    final durationMinutes =
-    DateTime.now().difference(startTime).inMinutes.clamp(1, 9999);
-    final steps = autoDetectedSteps;
-
-    // Fire the callback BEFORE resetting so the listener captures correct data
-    onAutoSave?.call(
-      startTime: startTime,
-      steps: steps,
-      durationMinutes: durationMinutes,
-    );
-
-    // Reset so the next walk starts fresh
-    resetAutoDetect();
-  }
-
-  // ── Pedometer callbacks ─────────────────────────────────────────────────────
-
-  void _onStepCount(StepCount event) {
+  // ── Live step callbacks ──────────────────────────────────────────────────────
+  void _onLiveStepCount(StepCount event) {
     _totalSteps = event.steps;
     if (_isTracking) {
       if (_sessionStartSteps == 0) _sessionStartSteps = _totalSteps;
-      _sessionSteps = _totalSteps - _sessionStartSteps;
+      _sessionSteps = (_totalSteps - _sessionStartSteps).clamp(0, 999999);
     }
     notifyListeners();
   }
 
-  void _onStepCountError(error) {
+  void _onStepCountError(dynamic error) {
     _error = 'Step count error: $error';
     notifyListeners();
   }
@@ -291,10 +246,6 @@ class PedometerController extends ChangeNotifier {
   void _onPedestrianStatus(PedestrianStatus event) {
     _isWalking = event.status == 'walking';
     notifyListeners();
-  }
-
-  void _onPedestrianStatusError(error) {
-    debugPrint('Pedestrian status error: $error');
   }
 
   Future<int?> getCurrentStepCount() async {
@@ -308,15 +259,15 @@ class PedometerController extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    stopTracking();
-    stopAutoDetect();
-    super.dispose();
-  }
-
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    stopTracking();
+    StepTrackingService.removeDataCallback(_onServiceData);
+    super.dispose();
   }
 }
