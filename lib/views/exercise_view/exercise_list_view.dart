@@ -5,7 +5,7 @@ import '../../controllers/exercise_controller.dart';
 import '../../controllers/pedometer_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
 import '../../models/analytic_model/analytics_app_state.dart';
-import '../../services/exercise_calorie_calculator.dart'; // ← ADD THIS
+import '../../services/exercise_calorie_calculator.dart';
 import 'exercise_add_view.dart';
 import 'exercise_detail_view.dart';
 import 'exercise_live_view.dart';
@@ -20,46 +20,78 @@ class ExerciseListView extends StatefulWidget {
 
 class _ExerciseListViewState extends State<ExerciseListView> {
   Timer? _bannerRefreshTimer;
-
-  PedometerController? _pedometer;
-
-  // ── Calorie calculator instance ─────────────────────────────────────────────
-  final CalorieCalculator _calorieCalculator = CalorieCalculator(); // ← ADD THIS
+  final CalorieCalculator _calorieCalculator = CalorieCalculator();
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _pedometer =
-          Provider.of<PedometerController>(context, listen: false);
+      final pedometer =
+      Provider.of<PedometerController>(context, listen: false);
 
-      // Wire the auto-save callback BEFORE starting detection
-      _pedometer!.onAutoSave = _handleAutoSave;
-      _pedometer!.startAutoDetect();
+      // Wire the auto-save callback BEFORE starting detection.
+      pedometer.onAutoSave = _handleAutoSave;
+
+      // ensureAutoDetectRunning() is idempotent — safe to call every time
+      // the widget mounts (e.g. hot-restart, tab switch after kill).
+      // It checks an internal flag so the service only starts once.
+      pedometer.ensureAutoDetectRunning();
     });
 
-    // Redraw every 30 s so "X min" in the banner stays current
-    _bannerRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Redraw every 20 s so "X min" in the banner stays current.
+    _bannerRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (mounted) setState(() {});
     });
-  }
-
-  String _getTodayDate() {
-    final now = DateTime.now();
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
   }
 
   @override
   void dispose() {
     _bannerRefreshTimer?.cancel();
-    _pedometer?.onAutoSave = null;
+    // Clear the callback so stale closures don't fire after unmount.
+    // Do NOT stop the service — it must keep running in the background.
+    final pedometer =
+    Provider.of<PedometerController>(context, listen: false);
+    pedometer.onAutoSave = null;
     super.dispose();
   }
 
-  // ── Auto-save handler (called by PedometerController) ──────────────────────
+  String _getTodayDate() {
+    final now = DateTime.now();
+    final days = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday'
+    ];
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
+  // ── Navigate to live workout ─────────────────────────────────────────────────
+  Future<void> _launchLiveView(BuildContext context, ExerciseType type) async {
+    final pedometer =
+    Provider.of<PedometerController>(context, listen: false);
+
+    // Pause cadence evaluator so the live session's steps don't create a
+    // false auto-walk banner when the user returns.
+    await pedometer.pauseAutoDetect();
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiveExerciseView(exerciseType: type),
+      ),
+    );
+
+    // Resume after returning — resets cadence baseline so no false trigger.
+    if (mounted) {
+      await pedometer.resumeAutoDetect();
+    }
+  }
+
+  // ── Auto-save handler (called by PedometerController) ───────────────────────
   Future<void> _handleAutoSave({
     required DateTime startTime,
     required int steps,
@@ -70,20 +102,17 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     final exerciseController =
     Provider.of<ExerciseController>(context, listen: false);
 
-    final title = _generateAutoTitle(startTime);
-
-    // ── Calculate calories from steps ────────────────────────────────────────
     final calories = steps > 0
         ? _calorieCalculator.estimateCaloriesFromSteps(steps)
         : null;
 
     final exercise = Exercise(
-      title: title,
+      title: _generateAutoTitle(startTime),
       type: ExerciseType.walking,
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      energyExpended: calories,          // ← ADD THIS
+      energyExpended: calories,
       isAutoDetected: true,
     );
 
@@ -98,7 +127,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 : 'Failed to save detected walk',
           ),
           backgroundColor: success ? const Color(0xFF43A047) : Colors.red,
-          duration: const Duration(seconds: 20),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -112,7 +141,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     return 'Night Walk';
   }
 
-  // ── Manual "Save Walk" from banner (user-initiated, same flow as before) ───
+  // ── Manual "Save Walk" from banner (user-initiated) ──────────────────────────
   Future<void> _saveAutoDetectedWalk(BuildContext context) async {
     final pedometer =
     Provider.of<PedometerController>(context, listen: false);
@@ -140,8 +169,8 @@ class _ExerciseListViewState extends State<ExerciseListView> {
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: 'e.g. Afternoon Walk',
-              border:
-              OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
           actions: [
@@ -170,7 +199,6 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
     if (title.isEmpty) return;
 
-    // ── Calculate calories from steps ────────────────────────────────────────
     final calories = steps > 0
         ? _calorieCalculator.estimateCaloriesFromSteps(steps)
         : null;
@@ -181,7 +209,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      energyExpended: calories,          // ← ADD THIS
+      energyExpended: calories,
       isAutoDetected: true,
     );
 
@@ -198,8 +226,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     }
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────────
-
+  // ── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AnalyticsAppState>();
@@ -252,29 +279,33 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                     return ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
-                        // ── Auto-walk banner ─────────────────────────────
-                        if (pedometer.isAutoWalkDetected)
+                        // ── Auto-walk banner ──────────────────────────────────
+                        // Shows automatically whenever the background service
+                        // detects walking AND the user is not in a live session.
+                        // isAutoWalkDetected already checks _autoDetectDismissed
+                        // and _autoDetectPaused internally, so no extra guards needed.
+                        if (pedometer.isAutoWalkDetected && !pedometer.isTracking)
                           _buildAutoWalkBanner(context, pedometer),
 
-                        // Start Workout Card
+                        // ── Start workout card ────────────────────────────────
                         _buildStartWorkoutCard(context),
                         const SizedBox(height: 24),
 
-                        // Today's Log
+                        // ── Today's Log ───────────────────────────────────────
                         if (controller.todayExercises.isNotEmpty) ...[
                           _buildSectionHeader("Today's Log", subTextColor),
                           const SizedBox(height: 16),
-                          ...controller.todayExercises
-                              .map((e) => _buildExerciseCard(context, e, isDark)),
+                          ...controller.todayExercises.map(
+                                  (e) => _buildExerciseCard(context, e, isDark)),
                           const SizedBox(height: 24),
                         ],
 
-                        // Past Log
+                        // ── Past Log ──────────────────────────────────────────
                         if (controller.pastExercises.isNotEmpty) ...[
                           _buildSectionHeader('Past exercise Log', subTextColor),
                           const SizedBox(height: 16),
-                          ...controller.pastExercises
-                              .map((e) => _buildExerciseCard(context, e, isDark)),
+                          ...controller.pastExercises.map(
+                                  (e) => _buildExerciseCard(context, e, isDark)),
                         ],
 
                         if (controller.exercises.isEmpty)
@@ -289,20 +320,17 @@ class _ExerciseListViewState extends State<ExerciseListView> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const AddExerciseView()),
-          );
-        },
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddExerciseView()),
+        ),
         backgroundColor: const Color(0xFFD1D1D1),
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
     );
   }
 
-  // ── Auto-walk banner ────────────────────────────────────────────────────────
+  // ── Auto-walk banner ─────────────────────────────────────────────────────────
   Widget _buildAutoWalkBanner(
       BuildContext context, PedometerController pedometer) {
     final startTime = pedometer.autoDetectStartTime;
@@ -311,11 +339,8 @@ class _ExerciseListViewState extends State<ExerciseListView> {
         : Duration.zero;
     final minutes = elapsed.inMinutes;
     final steps = pedometer.autoDetectedSteps;
-
-    // ── Estimate calories for the banner ─────────────────────────────────────
-    final estimatedCalories = steps > 0
-        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
-        : 0;
+    final estimatedCalories =
+    steps > 0 ? _calorieCalculator.estimateCaloriesFromSteps(steps) : 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -364,15 +389,14 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 onTap: () =>
                     Provider.of<PedometerController>(context, listen: false)
                         .dismissAutoDetect(),
-                child:
-                const Icon(Icons.close, color: Colors.white70, size: 20),
+                child: const Icon(Icons.close, color: Colors.white70, size: 20),
               ),
             ],
           ),
 
           const SizedBox(height: 10),
 
-          // Stats row — now includes calories
+          // Stats row
           Row(
             children: [
               _buildBannerStat(Icons.access_time, '$minutes min', 'Duration'),
@@ -380,7 +404,6 @@ class _ExerciseListViewState extends State<ExerciseListView> {
               if (steps > 0) ...[
                 _buildBannerStat(Icons.directions_walk, '$steps', 'Steps'),
                 const SizedBox(width: 12),
-                // ── NEW: calories stat ──────────────────────────────────
                 _buildBannerStat(
                     Icons.local_fire_department, '$estimatedCalories', 'Cal'),
               ],
@@ -417,18 +440,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    Provider.of<PedometerController>(context, listen: false)
-                        .resetAutoDetect();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const LiveExerciseView(
-                          exerciseType: ExerciseType.walking,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _launchLiveView(context, ExerciseType.walking),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
@@ -469,26 +481,22 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                     fontSize: 15,
                     fontWeight: FontWeight.bold)),
             Text(label,
-                style:
-                const TextStyle(color: Colors.white70, fontSize: 11)),
+                style: const TextStyle(color: Colors.white70, fontSize: 11)),
           ],
         ),
       ],
     );
   }
 
-  // ── Section header ──────────────────────────────────────────────────────────
   Widget _buildSectionHeader(String title, Color? color) {
     return Text(
       title,
       style: TextStyle(
-          fontSize: 16,
-          color: color,
-          fontWeight: FontWeight.w400),
+          fontSize: 16, color: color, fontWeight: FontWeight.w400),
     );
   }
 
-  // ── Start workout card ──────────────────────────────────────────────────────
+  // ── Start workout card ───────────────────────────────────────────────────────
   Widget _buildStartWorkoutCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -541,14 +549,14 @@ class _ExerciseListViewState extends State<ExerciseListView> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildQuickStartButton(context, ExerciseType.walking, 'Walking',
-                  Icons.directions_walk),
+              _buildQuickStartButton(
+                  context, ExerciseType.walking, 'Walking', Icons.directions_walk),
               const SizedBox(width: 12),
-              _buildQuickStartButton(context, ExerciseType.jogging, 'Jogging',
-                  Icons.run_circle),
+              _buildQuickStartButton(
+                  context, ExerciseType.jogging, 'Jogging', Icons.run_circle),
               const SizedBox(width: 12),
-              _buildQuickStartButton(context, ExerciseType.running, 'Running',
-                  Icons.directions_run),
+              _buildQuickStartButton(
+                  context, ExerciseType.running, 'Running', Icons.directions_run),
             ],
           ),
         ],
@@ -560,22 +568,14 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       BuildContext context, ExerciseType type, String label, IconData icon) {
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          Provider.of<PedometerController>(context, listen: false)
-              .resetAutoDetect();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => LiveExerciseView(exerciseType: type)),
-          );
-        },
+        onTap: () => _launchLiveView(context, type),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(12),
-            border:
-            Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+            border: Border.all(
+                color: Colors.white.withOpacity(0.3), width: 1),
           ),
           child: Column(
             children: [
@@ -593,8 +593,9 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     );
   }
 
-  // ── Exercise card — colour-classified by type ───────────────────────────────
-  Widget _buildExerciseCard(BuildContext context, Exercise exercise, bool isDark) {
+  // ── Exercise card ────────────────────────────────────────────────────────────
+  Widget _buildExerciseCard(
+      BuildContext context, Exercise exercise, bool isDark) {
     final bg = exercise.type.cardBackground;
     final accent = exercise.type.cardAccent;
     final iconColor = exercise.type.cardAccent;
@@ -615,9 +616,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border(
-            left: BorderSide(color: accent, width: 4),
-          ),
+          border: Border(left: BorderSide(color: accent, width: 4)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
@@ -627,13 +626,11 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Timestamp + auto-detected chip
                     Row(
                       children: [
                         Text(
                           'created at ${exercise.formattedTime}',
-                          style: TextStyle(
-                              fontSize: 11, color: subColor),
+                          style: TextStyle(fontSize: 11, color: subColor),
                         ),
                         if (exercise.isAutoDetected) ...[
                           const SizedBox(width: 6),
@@ -678,20 +675,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                       exercise.distanceKm != null
                           ? '${exercise.formattedDistance} in ${exercise.formattedDuration}'
                           : exercise.formattedDuration,
-                      style: TextStyle(
-                          fontSize: 13, color: subColor),
+                      style: TextStyle(fontSize: 13, color: subColor),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         Text(exercise.formattedDate,
-                            style: TextStyle(
-                                fontSize: 12, color: subColor)),
+                            style:
+                            TextStyle(fontSize: 12, color: subColor)),
                         const Spacer(),
                         if (exercise.steps != null)
                           Text(exercise.formattedSteps,
-                              style: TextStyle(
-                                  fontSize: 12, color: subColor)),
+                              style:
+                              TextStyle(fontSize: 12, color: subColor)),
                       ],
                     ),
                   ],
@@ -705,11 +701,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                   color: iconColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  exercise.type.icon,
-                  color: iconColor,
-                  size: 26,
-                ),
+                child: Icon(exercise.type.icon, color: iconColor, size: 26),
               ),
             ],
           ),
@@ -725,7 +717,9 @@ class _ExerciseListViewState extends State<ExerciseListView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fitness_center, size: 80, color: isDark ? Colors.grey[700] : Colors.grey[300]),
+            Icon(Icons.fitness_center,
+                size: 80,
+                color: isDark ? Colors.grey[700] : Colors.grey[300]),
             const SizedBox(height: 16),
             Text('No exercises yet',
                 style: TextStyle(
@@ -734,7 +728,9 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Text('Tap the + button to add your first exercise',
-                style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.grey[600] : Colors.grey[400]),
                 textAlign: TextAlign.center),
           ],
         ),
