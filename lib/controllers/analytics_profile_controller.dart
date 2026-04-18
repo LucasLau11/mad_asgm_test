@@ -1,15 +1,17 @@
 import '../models/analytic_model/analytics_profile_model.dart';
+import '../services/database/heart_rate_database_service.dart' as shared_db;
 
 class AnalyticsProfileController {
   Future<AnalyticsProfileModel> fetchUserProfile() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    final user = shared_db.DatabaseService.currentUser;
     return AnalyticsProfileModel(
-      email: 'johndoe@example.com',
+      email: user?.email ?? '',
       profileImageUrl: null,
     );
   }
 
   Future<void> logout() async {
-    // TODO: clear session/token, navigate to login
+    // Session is cleared by DatabaseService().logoutUser() in profile_view.
+    // Add any extra cleanup (tokens, caches) here if needed.
   }
 }

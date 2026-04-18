@@ -1,26 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/analytic_model/analytics_app_state.dart';
+import '../../services/database/heart_rate_database_service.dart' as hr_db;
 
-class AnalyticsPersonalSettingsView extends StatelessWidget {
+class AnalyticsPersonalSettingsView extends StatefulWidget {
   const AnalyticsPersonalSettingsView({super.key});
 
+  @override
+  State<AnalyticsPersonalSettingsView> createState() =>
+      _AnalyticsPersonalSettingsViewState();
+}
+
+class _AnalyticsPersonalSettingsViewState
+    extends State<AnalyticsPersonalSettingsView> {
   final List<String> _genderOptions = const ['Male', 'Female', 'Other'];
+
+  // Weight pulled from the Weight table
+  String? _dbWeight;      // e.g. "72.5 kg" — null while loading
+  bool _weightLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestWeight();
+  }
+
+  Future<void> _loadLatestWeight() async {
+    try {
+      final records = await hr_db.DatabaseService().getWeightRecords();
+      if (!mounted) return;
+      if (records.isEmpty) {
+        setState(() {
+          _dbWeight = null;
+          _weightLoading = false;
+        });
+      } else {
+        // getWeightRecords() returns records ordered by createdOn DESC,
+        // so the first entry is the most recent.
+        final latest = records.first;
+        setState(() {
+          _dbWeight = '${latest.weightKg} kg';
+          _weightLoading = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _dbWeight = null;
+        _weightLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AnalyticsAppState>(
       builder: (context, appState, _) {
         final isDark = appState.darkMode;
-        final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100;
+        final cardColor =
+        isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100;
         final textColor = isDark ? Colors.white : Colors.black87;
 
-        final weightOptions = appState.weightOptions;
         final heightOptions = appState.heightOptions;
-
-        final currentWeight = weightOptions.contains(appState.weight)
-            ? appState.weight
-            : appState.defaultWeight;
         final currentHeight = heightOptions.contains(appState.height)
             ? appState.height
             : appState.defaultHeight;
@@ -38,13 +79,17 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               children: [
-                _toggleCard('GPS Tracking', appState.gpsTracking, cardColor, textColor,
-                        (v) => appState.setGpsTracking(v)),
+                _toggleCard('GPS Tracking', appState.gpsTracking, cardColor,
+                    textColor, (v) => appState.setGpsTracking(v)),
                 const SizedBox(height: 12),
-                _toggleCard('Heart Rate Alert', appState.heartRateAlert, cardColor, textColor,
-                        (v) => appState.setHeartRateAlert(v)),
+                _toggleCard('Heart Rate Alert', appState.heartRateAlert,
+                    cardColor, textColor, (v) => appState.setHeartRateAlert(v)),
                 const SizedBox(height: 12),
-                _toggleCard('Auto-Detect Workout', appState.autoDetectWorkout, cardColor, textColor,
+                _toggleCard(
+                    'Auto-Detect Workout',
+                    appState.autoDetectWorkout,
+                    cardColor,
+                    textColor,
                         (v) => appState.setAutoDetectWorkout(v)),
                 const SizedBox(height: 12),
                 _card(
@@ -55,29 +100,71 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
                       Text('Username : ${appState.username}',
                           style: TextStyle(fontSize: 15, color: textColor)),
                       OutlinedButton(
-                        onPressed: () => _showChangeUsernameDialog(context, appState, isDark),
+                        onPressed: () => _showChangeUsernameDialog(
+                            context, appState, isDark),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           side: BorderSide(
-                              color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                              color: isDark
+                                  ? Colors.grey.shade600
+                                  : Colors.grey.shade400),
                           foregroundColor: textColor,
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Change', style: TextStyle(fontSize: 13)),
+                        child:
+                        const Text('Change', style: TextStyle(fontSize: 13)),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                _dropdownCard('Weight (${appState.isMetric ? "kg" : "lbs"})', currentWeight,
-                    weightOptions, cardColor, textColor, (v) => appState.setWeight(v!)),
+
+                // ── Weight — read-only, sourced from DB ──────────────────────
+                _card(
+                  cardColor: cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Weight',
+                            style:
+                            TextStyle(fontSize: 15, color: textColor)),
+                        _weightLoading
+                            ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2),
+                        )
+                            : Text(
+                          _dbWeight ?? 'No data',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _dbWeight != null
+                                ? textColor
+                                : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // ─────────────────────────────────────────────────────────────
+
                 const SizedBox(height: 12),
-                _dropdownCard('Height (${appState.isMetric ? "cm" : "ft"})', currentHeight,
-                    heightOptions, cardColor, textColor, (v) => appState.setHeight(v!)),
+                _dropdownCard(
+                    'Height (${appState.isMetric ? "cm" : "ft"})',
+                    currentHeight,
+                    heightOptions,
+                    cardColor,
+                    textColor,
+                        (v) => appState.setHeight(v!)),
                 const SizedBox(height: 12),
-                _dropdownCard('Gender', appState.gender, _genderOptions, cardColor, textColor,
-                        (v) => appState.setGender(v!)),
+                _dropdownCard('Gender', appState.gender, _genderOptions,
+                    cardColor, textColor, (v) => appState.setGender(v!)),
               ],
             ),
           ),
@@ -90,7 +177,8 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+          color: cardColor, borderRadius: BorderRadius.circular(10)),
       child: child,
     );
   }
@@ -109,8 +197,13 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
     );
   }
 
-  Widget _dropdownCard(String label, String value, List<String> options, Color cardColor,
-      Color textColor, ValueChanged<String?> onChanged) {
+  Widget _dropdownCard(
+      String label,
+      String value,
+      List<String> options,
+      Color cardColor,
+      Color textColor,
+      ValueChanged<String?> onChanged) {
     return _card(
       cardColor: cardColor,
       child: Row(
@@ -122,7 +215,9 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
               value: value,
               dropdownColor: cardColor,
               style: TextStyle(fontSize: 14, color: textColor),
-              items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+              items: options
+                  .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                  .toList(),
               onChanged: onChanged,
             ),
           ),
@@ -131,7 +226,8 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
     );
   }
 
-  void _showChangeUsernameDialog(BuildContext context, AnalyticsAppState appState, bool isDark) {
+  void _showChangeUsernameDialog(
+      BuildContext context, AnalyticsAppState appState, bool isDark) {
     final controller = TextEditingController(text: appState.username);
     String? errorText;
 
@@ -164,12 +260,15 @@ class AnalyticsPersonalSettingsView extends StatelessWidget {
                   helperText: 'Letters, numbers, underscores. 3–20 chars.',
                   helperMaxLines: 2,
                 ),
-                onChanged: (val) => setDialogState(() => errorText = validate(val)),
+                onChanged: (val) =>
+                    setDialogState(() => errorText = validate(val)),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             TextButton(
               onPressed: () {
                 final error = validate(controller.text);

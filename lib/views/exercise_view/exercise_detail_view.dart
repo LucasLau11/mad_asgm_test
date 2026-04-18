@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 import 'exercise_add_view.dart';
 
 class ExerciseDetailView extends StatefulWidget {
@@ -83,14 +84,25 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final panelBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final dividerColor = isDark ? Colors.grey[800] : null;
+
     final hasRoute = widget.exercise.routePoints != null &&
         widget.exercise.routePoints!.isNotEmpty;
     final routePoints = _getRouteLatLngs();
     final hasDistance = widget.exercise.distanceKm != null;
     final isLocked = widget.exercise.isAutoDetected;
 
+    // How many pixels the panel overlaps upward into the map
+    const double overlapAmount = 24.0;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      // Match panel background so no dark bleed shows at corners
+      backgroundColor: panelBg,
       body: SafeArea(
         child: Stack(
           children: [
@@ -200,9 +212,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               onTap: () => _confirmDelete(context),
                             ),
                           ),
+                          // Keep fullscreen button above the overlap zone
                           Positioned(
-                            bottom: 16,
-                            right: 16,
+                            bottom: overlapAmount + 8,
+                            left: 16,
                             child: _buildMapButton(
                               icon: _isMapExpanded
                                   ? Icons.fullscreen_exit
@@ -219,180 +232,196 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                   ),
 
                 // ── Details panel ────────────────────────────────────────────
+                // Transform.translate pulls the panel upward by overlapAmount,
+                // so it sits ON TOP of the map edge — no dark scaffold gap.
                 Expanded(
-                  child: Container(
-                    color: Colors.white,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                          20, hasRoute ? 20 : 72, 20, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title + lock badge
-                          Row(
+                  child: Transform.translate(
+                    offset: hasRoute
+                        ? const Offset(0, -overlapAmount)
+                        : Offset.zero,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      child: Container(
+                        color: panelBg,
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(
+                              20, hasRoute ? 20 : 72, 20, 20),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  _title,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                              // Title + lock badge
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _title,
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  if (isLocked)
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          left: 8, top: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.lock_outline,
+                                              size: 13,
+                                              color: Colors.grey[500]),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Auto-detected',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[500]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
-                              if (isLocked)
+                              const SizedBox(height: 4),
+                              Text(
+                                '${widget.exercise.formattedDate}  ·  ${widget.exercise.formattedTime} – ${_getEndTime()}',
+                                style: TextStyle(
+                                    fontSize: 13, color: subTextColor),
+                              ),
+
+                              // Read-only notice
+                              if (isLocked) ...[
+                                const SizedBox(height: 12),
                                 Container(
-                                  margin: const EdgeInsets.only(
-                                      left: 8, top: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: isDark
+                                        ? const Color(0xFF2C2600)
+                                        : const Color(0xFFFFF9E6),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                        color: Colors.grey[300]!),
+                                        color: const Color(0xFFFFE082)),
                                   ),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.lock_outline,
-                                          size: 13,
-                                          color: Colors.grey[500]),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Auto-detected',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey[500]),
+                                      const Icon(Icons.info_outline,
+                                          size: 16,
+                                          color: Color(0xFFF57F17)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Steps, distance, and duration were recorded automatically and cannot be edited.',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark ? Colors.amber[200] : Colors.brown[700]),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
+                              ],
+
+                              const SizedBox(height: 20),
+
+                              // Step goal progress
+                              if (widget.exercise.steps != null &&
+                                  widget.exercise.stepGoal != null) ...[
+                                _buildStepGoalCard(isDark),
+                                const SizedBox(height: 16),
+                              ],
+
+                              _buildDetailRow('Exercise',
+                                  widget.exercise.type.displayName, textColor, subTextColor),
+                              Divider(height: 1, color: dividerColor),
+
+                              if (hasDistance) ...[
+                                _buildDetailRow('Distance',
+                                    _formatDistance(
+                                        widget.exercise.distanceKm!), textColor, subTextColor),
+                                Divider(height: 1, color: dividerColor),
+                              ],
+
+                              if (widget.exercise.steps != null) ...[
+                                _buildDetailRow('Steps',
+                                    '${widget.exercise.steps} steps', textColor, subTextColor),
+                                Divider(height: 1, color: dividerColor),
+                              ],
+
+                              if (widget.exercise.energyExpended != null) ...[
+                                _buildDetailRow('Energy expended',
+                                    '${widget.exercise.energyExpended} cal', textColor, subTextColor),
+                                Divider(height: 1, color: dividerColor),
+                              ],
+
+                              _buildDetailRow(
+                                'Start',
+                                '${widget.exercise.formattedDate}   ${widget.exercise.formattedTime}',
+                                textColor, subTextColor,
+                              ),
+                              Divider(height: 1, color: dividerColor),
+
+                              _buildDetailRow('Duration',
+                                  '${widget.exercise.durationMinutes} min', textColor, subTextColor),
+                              Divider(height: 1, color: dividerColor),
+
+                              const SizedBox(height: 16),
+
+                              if (_notes != null && _notes!.isNotEmpty) ...[
+                                Text(
+                                  'Note',
+                                  style: TextStyle(
+                                      fontSize: 13, color: subTextColor),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _notes!,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.6,
+                                      color: textColor),
+                                ),
+                              ],
+
+                              // Note edit hint for auto-detected entries
+                              if (isLocked) ...[
+                                const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: () => _showAutoNoteEditDialog(context),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_note,
+                                          size: 16,
+                                          color: Colors.grey[400]),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _notes != null && _notes!.isNotEmpty
+                                            ? 'Edit note'
+                                            : 'Add a note',
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[400]),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${widget.exercise.formattedDate}  ·  ${widget.exercise.formattedTime} – ${_getEndTime()}',
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.grey[600]),
-                          ),
-
-                          // Read-only notice
-                          if (isLocked) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFF9E6),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: const Color(0xFFFFE082)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline,
-                                      size: 16,
-                                      color: Color(0xFFF57F17)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Steps, distance, and duration were recorded automatically and cannot be edited.',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.brown[700]),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          const SizedBox(height: 20),
-
-                          // Step goal progress
-                          if (widget.exercise.steps != null &&
-                              widget.exercise.stepGoal != null) ...[
-                            _buildStepGoalCard(),
-                            const SizedBox(height: 16),
-                          ],
-
-                          _buildDetailRow('Exercise',
-                              widget.exercise.type.displayName),
-                          const Divider(height: 1),
-
-                          if (hasDistance) ...[
-                            _buildDetailRow('Distance',
-                                _formatDistance(
-                                    widget.exercise.distanceKm!)),
-                            const Divider(height: 1),
-                          ],
-
-                          if (widget.exercise.steps != null) ...[
-                            _buildDetailRow('Steps',
-                                '${widget.exercise.steps} steps'),
-                            const Divider(height: 1),
-                          ],
-
-                          if (widget.exercise.energyExpended != null) ...[
-                            _buildDetailRow('Energy expended',
-                                '${widget.exercise.energyExpended} cal'),
-                            const Divider(height: 1),
-                          ],
-
-                          _buildDetailRow(
-                            'Start',
-                            '${widget.exercise.formattedDate}   ${widget.exercise.formattedTime}',
-                          ),
-                          const Divider(height: 1),
-
-                          _buildDetailRow('Duration',
-                              '${widget.exercise.durationMinutes} min'),
-                          const Divider(height: 1),
-
-                          const SizedBox(height: 16),
-
-                          if (_notes != null && _notes!.isNotEmpty) ...[
-                            const Text(
-                              'Note',
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _notes!,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1.6,
-                                  color: Colors.black87),
-                            ),
-                          ],
-
-                          // Note edit hint for auto-detected entries
-                          if (isLocked) ...[
-                            const SizedBox(height: 16),
-                            GestureDetector(
-                              onTap: () => _showAutoNoteEditDialog(context),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit_note,
-                                      size: 16,
-                                      color: Colors.grey[400]),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _notes != null && _notes!.isNotEmpty
-                                        ? 'Edit note'
-                                        : 'Add a note',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[400]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -422,7 +451,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                         onTap: () => _confirmDelete(context),
                       ),
                       const SizedBox(width: 8),
-                      // Edit: locked entries only allow title+notes edit
                       _buildMapButton(
                         icon: isLocked ? Icons.edit_note : Icons.edit,
                         iconColor: isLocked
@@ -450,13 +478,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   // ── Widget helpers ──────────────────────────────────────────────────────────
 
-  Widget _buildStepGoalCard() {
+  Widget _buildStepGoalCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,7 +518,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           LinearProgressIndicator(
             value: (widget.exercise.steps! / widget.exercise.stepGoal!)
                 .clamp(0.0, 1.0),
-            backgroundColor: Colors.grey[300],
+            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
               widget.exercise.steps! >= widget.exercise.stepGoal!
                   ? Colors.green
@@ -501,28 +529,30 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           const SizedBox(height: 8),
           Text(
             '${widget.exercise.steps} / ${widget.exercise.stepGoal} steps',
-            style:
-            const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : Colors.black87),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, Color textColor, Color? subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87)),
+                  color: textColor)),
           Text(value,
-              style: const TextStyle(
-                  fontSize: 14, color: Colors.black87)),
+              style: TextStyle(
+                  fontSize: 14, color: textColor)),
         ],
       ),
     );
@@ -578,7 +608,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     );
   }
 
-  // ── Auto-detected: only allow title + notes edit ────────────────────────────
   void _showAutoNoteEditDialog(BuildContext context) {
     final titleController = TextEditingController(text: _title);
     final notesController = TextEditingController(text: _notes ?? '');
@@ -611,8 +640,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
             const SizedBox(height: 8),
             Text(
               'Steps, distance, and duration cannot be changed.',
-              style:
-              TextStyle(fontSize: 11, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -630,7 +658,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                   ? null
                   : notesController.text.trim();
 
-              // Only title and notes are updated — all sensor data is preserved.
               final updated = widget.exercise.copyWith(
                 title: newTitle,
                 notes: newNotes,
@@ -659,7 +686,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     );
   }
 
-  // ── Live-tracked GPS edit (title + notes only, preserves route) ─────────────
   void _showLiveEditDialog(BuildContext context) {
     final titleController = TextEditingController(text: _title);
     final notesController = TextEditingController(text: _notes ?? '');

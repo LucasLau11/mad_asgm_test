@@ -14,6 +14,7 @@ import 'controllers/exercise_controller.dart';
 import 'controllers/pedometer_controller.dart';
 import 'controllers/location_controller.dart';
 import 'models/analytic_model/analytics_app_state.dart';
+import 'services/database/heart_rate_database_service.dart';
 import 'views/login_screen.dart';
 
 // Your friend's module YP || YH || TW
@@ -59,7 +60,7 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               brightness: Brightness.light,
               primarySwatch: Colors.purple,
-              scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+              scaffoldBackgroundColor: Colors.white,
               fontFamily: 'SF Pro Display',
               textTheme: const TextTheme(
                 bodyLarge: TextStyle(fontSize: 16, color: Colors.black87),
@@ -67,6 +68,10 @@ class MyApp extends StatelessWidget {
               ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF7C6FDC),
+                brightness: Brightness.light,
+                surface: Colors.white,
+                onSurface: Colors.black87,
+                onSurfaceVariant: Colors.grey,
               ),
               switchTheme: SwitchThemeData(
                 thumbColor: WidgetStateProperty.all(Colors.white),
@@ -84,14 +89,21 @@ class MyApp extends StatelessWidget {
               primarySwatch: Colors.purple,
               fontFamily: 'SF Pro Display',
               appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFF121212),
-                foregroundColor: Colors.white,
+                backgroundColor: Color(0xFF1E1E1E),
+                foregroundColor: Colors.grey,
                 elevation: 0,
               ),
               cardColor: const Color(0xFF1E1E1E),
+              textTheme: const TextTheme(
+                bodyLarge: TextStyle(fontSize: 16, color: Colors.white),
+                bodyMedium: TextStyle(fontSize: 14, color: Colors.white),
+              ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF7C6FDC),
                 brightness: Brightness.dark,
+                surface: const Color(0xFF1E1E1E),
+                onSurface: Colors.white,
+                onSurfaceVariant: Colors.grey,
               ),
               switchTheme: SwitchThemeData(
                 thumbColor: WidgetStateProperty.all(Colors.white),
@@ -103,9 +115,85 @@ class MyApp extends StatelessWidget {
                 trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
               ),
             ),
-            home: const LoginScreen(),
+            // SplashRoute handles the auto-login check before routing
+            home: const SplashRoute(),
           );
         },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SplashRoute
+//
+//  Shown for a brief moment on every cold-start.  Attempts to restore a
+//  persisted session; if successful it navigates directly to MainShell,
+//  otherwise it falls through to LoginScreen.
+// ─────────────────────────────────────────────────────────────────────────────
+class SplashRoute extends StatefulWidget {
+  const SplashRoute({Key? key}) : super(key: key);
+
+  @override
+  State<SplashRoute> createState() => _SplashRouteState();
+}
+
+class _SplashRouteState extends State<SplashRoute> {
+  @override
+  void initState() {
+    super.initState();
+    _tryAutoLogin();
+  }
+
+  Future<void> _tryAutoLogin() async {
+    // Attempt to restore a saved session
+    final user = await DatabaseService().tryRestoreSession();
+
+    if (!mounted) return;
+
+    if (user != null) {
+      // Session restored — reload data for this user then go to main shell
+      await Provider.of<ExerciseController>(context, listen: false)
+          .reloadForCurrentUser();
+      await Provider.of<AnalyticsAppState>(context, listen: false)
+          .onUserLoggedIn();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
+    } else {
+      // No saved session — go to login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Simple branded splash while the session check runs
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/fitpulse.png',
+              width: 100,
+              height: 100,
+            ),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C6FDC)),
+              strokeWidth: 2,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -137,6 +225,8 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: const FitPulseHeader(),
       body: IndexedStack(
@@ -148,7 +238,7 @@ class _MainShellState extends State<MainShell> {
         onTap: (index) => setState(() => _selectedIndex = index),
         selectedItemColor: const Color(0xFF7C6FDC),
         unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         items: const [
@@ -170,8 +260,12 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final dividerColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
@@ -205,7 +299,7 @@ class FitPulseHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(color: const Color(0xFFEEEEEE), height: 1),
+        child: Container(color: dividerColor, height: 1),
       ),
     );
   }

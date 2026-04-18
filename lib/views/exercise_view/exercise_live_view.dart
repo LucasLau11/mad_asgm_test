@@ -10,6 +10,7 @@ import '../../controllers/exercise_controller.dart';
 import '../../controllers/pedometer_controller.dart';
 import '../../controllers/location_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 import '../../services/exercise_notification_service.dart';
 
 
@@ -150,7 +151,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
     await WakelockPlus.enable();
 
-    // Reset BEFORE startTracking so initial GPS point is preserved
     pedometerController.resetSession();
     locationController.resetRoute();
 
@@ -235,7 +235,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     _startTimer();
   }
 
-  // Step 1: confirm they want to stop
   void _showStopConfirmation() {
     showDialog(
       context: context,
@@ -253,7 +252,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _showTitleDialog(); // Step 2: let them name it
+              _showTitleDialog();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Finish'),
@@ -263,7 +262,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     );
   }
 
-  // Step 2: let user name the workout before saving
   void _showTitleDialog() {
     final autoTitle =
         '${widget.exerciseType.displayName} ${_formatDuration(_elapsedSeconds)}';
@@ -293,7 +291,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _stopWorkout(''); // empty → auto-generate in Exercise model
+              _stopWorkout('');
             },
             child: const Text('Skip'),
           ),
@@ -329,12 +327,10 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     locationController.stopTracking();
 
     final exercise = Exercise(
-      title: title, // '' triggers auto-generate inside Exercise model
+      title: title,
       type: widget.exerciseType,
       startTime: _startTime!,
       durationMinutes: (_elapsedSeconds / 60).round().clamp(1, 9999),
-      // FIX: round to 2 decimal places so detail page shows e.g. "0.33 km"
-      // instead of the raw floating-point accumulation "0.326826... km".
       distanceKm: double.parse(
           locationController.totalDistance.toStringAsFixed(2)),
       steps: pedometerController.sessionSteps,
@@ -410,396 +406,403 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final panelBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final statCardColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[100]!;
+    final statIconColor = isDark ? Colors.grey[400] : Colors.grey[700];
 
     return PopScope(
-      canPop: false,                           // ← always intercept
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (_startTime != null) {              // workout started (tracking OR paused)
+        if (_startTime != null) {
           _showExitConfirmation();
         } else {
-          Navigator.pop(context);              // not started yet, just leave
+          Navigator.pop(context);
         }
       },
 
-    child: Scaffold(
-      // White background removes the black gap between map and stats panel
-      backgroundColor: Colors.white,
-      body: Consumer3<PedometerController, LocationController,
-          ExerciseController>(
-        builder: (context, pedometerController, locationController,
-            exerciseController, child) {
-          final currentSteps = pedometerController.sessionSteps;
-          final currentDistance = locationController.totalDistance;
-          final currentSpeed = locationController.currentSpeed ?? 0.0;
-          final stepGoalProgress = _loadedStepGoal != null
-              ? (currentSteps / _loadedStepGoal!).clamp(0.0, 1.0)
-              : 0.0;
+      child: Scaffold(
+        backgroundColor: panelBg,
+        body: Consumer3<PedometerController, LocationController,
+            ExerciseController>(
+          builder: (context, pedometerController, locationController,
+              exerciseController, child) {
+            final currentSteps = pedometerController.sessionSteps;
+            final currentDistance = locationController.totalDistance;
+            final currentSpeed = locationController.currentSpeed ?? 0.0;
+            final stepGoalProgress = _loadedStepGoal != null
+                ? (currentSteps / _loadedStepGoal!).clamp(0.0, 1.0)
+                : 0.0;
 
-          // Move map to follow user on every location update
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_isTracking && locationController.currentLatLng != null) {
-              try {
-                _mapController.move(
-                    locationController.currentLatLng!, 17.0);
-              } catch (_) {}
-            }
-          });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_isTracking && locationController.currentLatLng != null) {
+                try {
+                  _mapController.move(
+                      locationController.currentLatLng!, 17.0);
+                } catch (_) {}
+              }
+            });
 
-          return SafeArea(
-            child: Column(
-              children: [
-                // ── Map View ───────────────────────────────────────────
-                // ClipRRect clips the map to have rounded bottom corners,
-                // eliminating the black gap against the white stats panel.
-                Expanded(
-                  flex: 3,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                    child: Stack(
-                      children: [
-                        locationController.currentLatLng != null
-                            ? FlutterMap(
-                          mapController: _mapController,
-                          options: MapOptions(
-                            initialCenter:
-                            locationController.currentLatLng!,
-                            initialZoom: 17.0,
-                            minZoom: 3.0,
-                            maxZoom: 19.0,
-                            keepAlive: true,
-                            interactionOptions: InteractionOptions(
-                              flags: InteractiveFlag.all &
-                              ~InteractiveFlag.rotate,
-                            ),
-                          ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName:
-                              'com.example.assignment_excercise_module',
-                              maxZoom: 19,
-                            ),
-
-                            // Route polyline
-                            if (locationController
-                                .routeLatLngs.length >=
-                                2)
-                              PolylineLayer(
-                                polylines: [
-                                  Polyline(
-                                    points: locationController
-                                        .routeLatLngs,
-                                    color: const Color(0xFF2196F3),
-                                    strokeWidth: 5.0,
-                                    borderColor: Colors.white,
-                                    borderStrokeWidth: 2.0,
-                                  ),
-                                ],
+            return SafeArea(
+              child: Column(
+                children: [
+                  // ── Map View ───────────────────────────────────────────
+                  Expanded(
+                    flex: 3,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      child: Stack(
+                        children: [
+                          locationController.currentLatLng != null
+                              ? FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter:
+                              locationController.currentLatLng!,
+                              initialZoom: 17.0,
+                              minZoom: 3.0,
+                              maxZoom: 19.0,
+                              keepAlive: true,
+                              interactionOptions: InteractionOptions(
+                                flags: InteractiveFlag.all &
+                                ~InteractiveFlag.rotate,
                               ),
-
-                            // Markers
-                            MarkerLayer(
-                              markers: [
-                                if (locationController
-                                    .routeLatLngs.isNotEmpty)
-                                  Marker(
-                                    point: locationController
-                                        .routeLatLngs.first,
-                                    width: 40,
-                                    height: 40,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Colors.white,
-                                            width: 3),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black
-                                                .withOpacity(0.3),
-                                            blurRadius: 6,
-                                            offset:
-                                            const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(Icons.flag,
-                                          color: Colors.white,
-                                          size: 20),
-                                    ),
-                                  ),
-                                if (_isTracking &&
-                                    locationController
-                                        .currentLatLng !=
-                                        null)
-                                  Marker(
-                                    point: locationController
-                                        .currentLatLng!,
-                                    width: 50,
-                                    height: 50,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color:
-                                        const Color(0xFF2196F3),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Colors.white,
-                                            width: 4),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.blue
-                                                .withOpacity(0.5),
-                                            blurRadius: 10,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                          Icons.navigation,
-                                          color: Colors.white,
-                                          size: 24),
-                                    ),
-                                  ),
-                              ],
                             ),
-                          ],
-                        )
-                            : const Center(
-                          child: Column(
-                            mainAxisAlignment:
-                            MainAxisAlignment.center,
                             children: [
-                              CircularProgressIndicator(
-                                  color: Colors.blue),
-                              SizedBox(height: 16),
-                              Text('Getting your location...',
-                                  style: TextStyle(
-                                      color: Colors.white70)),
-                            ],
-                          ),
-                        ),
-
-                        // Back button
-                        Positioned(
-                          top: 16,
-                          left: 16,
-                          child: GestureDetector(
-                            onTap: () {
-                              if (_startTime != null) {  // ← covers both tracking AND paused
-                                _showExitConfirmation();
-                              } else {
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                  ),
+                              TileLayer(
+                                urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName:
+                                'com.example.assignment_excercise_module',
+                                maxZoom: 19,
+                              ),
+                              if (locationController
+                                  .routeLatLngs.length >=
+                                  2)
+                                PolylineLayer(
+                                  polylines: [
+                                    Polyline(
+                                      points: locationController
+                                          .routeLatLngs,
+                                      color: const Color(0xFF2196F3),
+                                      strokeWidth: 5.0,
+                                      borderColor: Colors.white,
+                                      borderStrokeWidth: 2.0,
+                                    ),
+                                  ],
+                                ),
+                              MarkerLayer(
+                                markers: [
+                                  if (locationController
+                                      .routeLatLngs.isNotEmpty)
+                                    Marker(
+                                      point: locationController
+                                          .routeLatLngs.first,
+                                      width: 40,
+                                      height: 40,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.white,
+                                              width: 3),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.3),
+                                              blurRadius: 6,
+                                              offset:
+                                              const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.flag,
+                                            color: Colors.white,
+                                            size: 20),
+                                      ),
+                                    ),
+                                  if (_isTracking &&
+                                      locationController
+                                          .currentLatLng !=
+                                          null)
+                                    Marker(
+                                      point: locationController
+                                          .currentLatLng!,
+                                      width: 50,
+                                      height: 50,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color:
+                                          const Color(0xFF2196F3),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.white,
+                                              width: 4),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.blue
+                                                  .withOpacity(0.5),
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                            Icons.navigation,
+                                            color: Colors.white,
+                                            size: 24),
+                                      ),
+                                    ),
                                 ],
                               ),
-                              child: const Icon(Icons.arrow_back,
-                                  color: Colors.black87),
-                            ),
-                          ),
-                        ),
-
-                        // Exercise type badge
-                        Positioned(
-                          top: 16,
-                          right: 16,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: widget.exerciseType.color
-                                  .withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              widget.exerciseType.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                            ],
+                          )
+                              : Container(
+                            color: isDark ? const Color(0xFF1A1A2E) : Colors.blueGrey[100],
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  const CircularProgressIndicator(
+                                      color: Colors.blue),
+                                  const SizedBox(height: 16),
+                                  Text('Getting your location...',
+                                      style: TextStyle(
+                                          color: isDark ? Colors.white70 : Colors.black54)),
+                                ],
                               ),
                             ),
                           ),
-                        ),
 
-                        // "Runs in background" badge
-                        if (_isTracking)
+                          // Back button
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_startTime != null) {
+                                  _showExitConfirmation();
+                                } else {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.arrow_back,
+                                    color: Colors.black87),
+                              ),
+                            ),
+                          ),
+
+                          // Exercise type badge
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: widget.exerciseType.color
+                                    .withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                widget.exerciseType.displayName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // "Runs in background" badge
+                          if (_isTracking)
+                            Positioned(
+                              bottom: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.lock_clock,
+                                        color: Colors.white, size: 14),
+                                    SizedBox(width: 4),
+                                    Text('Runs in background',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10)),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          // OSM attribution
                           Positioned(
                             bottom: 8,
-                            left: 8,
+                            right: 8,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.white.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock_clock,
-                                      color: Colors.white, size: 14),
-                                  SizedBox(width: 4),
-                                  Text('Runs in background',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10)),
-                                ],
-                              ),
+                              child: const Text('© OpenStreetMap',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.black54)),
                             ),
                           ),
-
-                        // OSM attribution
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('© OpenStreetMap',
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black54)),
-                          ),
-                        ),
-                      ],
-                    ), // Stack
-                  ),   // ClipRRect
-                ),
-
-                // ── Stats Panel ─────────────────────────────────────────
-                // OVERFLOW FIX: removed Spacer() — it was pushing content
-                // outside the flex:2 budget. Use MainAxisAlignment
-                // .spaceBetween on the Column instead, and shrink padding
-                // + font sizes slightly so everything fits comfortably.
-
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                    child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Timer + subtitle
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _formatDuration(_elapsedSeconds),
-                              style: const TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _startTime != null
-                                  ? 'Started at ${TimeOfDay.fromDateTime(_startTime!).format(context)}'
-                                  : 'Ready to start',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-
-                        // Stats Grid
-                        Row(
-                          children: [
-                            _buildStatCard(
-                              icon: Icons.directions_walk,
-                              label: 'Steps',
-                              value: currentSteps.toString(),
-                              goal: _loadedStepGoal != null
-                                  ? '/$_loadedStepGoal'
-                                  : null,
-                              progress: stepGoalProgress,
-                            ),
-                            const SizedBox(width: 10),
-                            _buildStatCard(
-                              icon: Icons.straighten,
-                              label: 'Distance',
-                              value: currentDistance.toStringAsFixed(2),
-                              unit: 'km',
-                            ),
-                            const SizedBox(width: 10),
-                            _buildStatCard(
-                              icon: Icons.speed,
-                              label: 'Speed',
-                              value: currentSpeed.toStringAsFixed(1),
-                              unit: 'km/h',
-                            ),
-                          ],
-                        ),
-
-                        // Control buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (_startTime != null) ...[
-                              _buildControlButton(
-                                icon: Icons.stop,
-                                color: Colors.red,
-                                onPressed: _showStopConfirmation,
-                              ),
-                              const SizedBox(width: 20),
-                            ],
-                            _buildControlButton(
-                              icon: _startTime == null
-                                  ? Icons.play_arrow
-                                  : _isTracking
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              color: const Color(0xFF4CAF50),
-                              size: 62,
-                              iconSize: 32,
-                              onPressed: () {
-                                if (_startTime == null) {
-                                  _startWorkout();
-                                } else if (_isTracking) {
-                                  _pauseWorkout();
-                                } else {
-                                  _resumeWorkout();
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-
-                    ),
-
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+
+                  // ── Stats Panel ─────────────────────────────────────────
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      color: panelBg,
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Timer + subtitle
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _formatDuration(_elapsedSeconds),
+                                  style: TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _startTime != null
+                                      ? 'Started at ${TimeOfDay.fromDateTime(_startTime!).format(context)}'
+                                      : 'Ready to start',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: subTextColor),
+                                ),
+                              ],
+                            ),
+
+                            // Stats Grid
+                            Row(
+                              children: [
+                                _buildStatCard(
+                                  icon: Icons.directions_walk,
+                                  label: 'Steps',
+                                  value: currentSteps.toString(),
+                                  goal: _loadedStepGoal != null
+                                      ? '/$_loadedStepGoal'
+                                      : null,
+                                  progress: stepGoalProgress,
+                                  cardColor: statCardColor,
+                                  iconColor: statIconColor,
+                                  textColor: textColor,
+                                  subColor: subTextColor,
+                                ),
+                                const SizedBox(width: 10),
+                                _buildStatCard(
+                                  icon: Icons.straighten,
+                                  label: 'Distance',
+                                  value: currentDistance.toStringAsFixed(2),
+                                  unit: 'km',
+                                  cardColor: statCardColor,
+                                  iconColor: statIconColor,
+                                  textColor: textColor,
+                                  subColor: subTextColor,
+                                ),
+                                const SizedBox(width: 10),
+                                _buildStatCard(
+                                  icon: Icons.speed,
+                                  label: 'Speed',
+                                  value: currentSpeed.toStringAsFixed(1),
+                                  unit: 'km/h',
+                                  cardColor: statCardColor,
+                                  iconColor: statIconColor,
+                                  textColor: textColor,
+                                  subColor: subTextColor,
+                                ),
+                              ],
+                            ),
+
+                            // Control buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_startTime != null) ...[
+                                  _buildControlButton(
+                                    icon: Icons.stop,
+                                    color: Colors.red,
+                                    onPressed: _showStopConfirmation,
+                                  ),
+                                  const SizedBox(width: 20),
+                                ],
+                                _buildControlButton(
+                                  icon: _startTime == null
+                                      ? Icons.play_arrow
+                                      : _isTracking
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  color: const Color(0xFF4CAF50),
+                                  size: 62,
+                                  iconSize: 32,
+                                  onPressed: () {
+                                    if (_startTime == null) {
+                                      _startWorkout();
+                                    } else if (_isTracking) {
+                                      _pauseWorkout();
+                                    } else {
+                                      _resumeWorkout();
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 
@@ -810,34 +813,40 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     String? unit,
     String? goal,
     double? progress,
+    required Color cardColor,
+    required Color? iconColor,
+    required Color textColor,
+    required Color? subColor,
   }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: Colors.grey[700]),
+            Icon(icon, size: 20, color: iconColor),
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: textColor),
               maxLines: 1,
             ),
             if (goal != null || unit != null)
               Text(
                 '${goal ?? ''}${unit ?? ''}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 11, color: subColor),
               ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 10, color: subColor),
             ),
             if (progress != null) ...[
               const SizedBox(height: 4),

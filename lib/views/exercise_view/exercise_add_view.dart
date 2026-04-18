@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 
 class AddExerciseView extends StatefulWidget {
   final Exercise? exercise;
@@ -149,8 +150,6 @@ class _AddExerciseViewState extends State<AddExerciseView> {
       energyExpended: calories,
       steps: steps,
       notes: _notesController.text.isEmpty ? null : _notesController.text,
-      // FIX: preserve routePoints from original when editing so the GPS route
-      // is never lost if this view is ever opened for a live-tracked session.
       routePoints: _isEditing ? widget.exercise!.routePoints : null,
       stepGoal: stepGoal,
       distanceGoal: distanceGoal,
@@ -168,24 +167,28 @@ class _AddExerciseViewState extends State<AddExerciseView> {
     }
   }
 
-  // Rest of the file continues with all the UI methods...
-  // (Keeping all existing methods unchanged)
-
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final bg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.grey[500] : Colors.grey[400];
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
+          icon: Icon(Icons.close, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           _isEditing ? 'Edit exercise' : 'Add exercise',
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: textColor,
             fontSize: 20,
             fontWeight: FontWeight.w400,
           ),
@@ -209,35 +212,36 @@ class _AddExerciseViewState extends State<AddExerciseView> {
           padding: const EdgeInsets.all(20),
           children: [
 
-            // ── ADDED: Custom title field ──
-            // Inline editable row — user types their own name here.
-            // If left blank, Exercise._generateDefaultTitle() auto-fills on save.
-            _buildTitleField(),
-            const Divider(height: 1),
+            // ── Title field ──
+            _buildTitleField(textColor, hintColor),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Exercise Type
             _buildFieldRow(
               label: 'Exercise',
               value: _selectedType.displayName,
               onTap: _showExerciseTypePicker,
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Start Date & Time
             _buildFieldRow(
               label: 'Start',
               value: '${_formatDate(_selectedDate)}   ${_selectedTime.format(context)}',
               onTap: _showDateTimePicker,
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Duration
             _buildFieldRow(
               label: 'Duration',
               value: '$_durationMinutes min',
               onTap: _showDurationPicker,
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Distance
             _buildFieldRow(
@@ -253,8 +257,9 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   isDecimal: true,
                 );
               },
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Energy Expended (Calories)
             _buildFieldRow(
@@ -269,8 +274,9 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   suffix: 'cal',
                 );
               },
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             // Steps
             _buildFieldRow(
@@ -285,29 +291,35 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   suffix: 'steps',
                 );
               },
+              textColor: textColor,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.grey[800] : null),
 
             const SizedBox(height: 20),
 
             // Notes
-            const Text(
+            Text(
               'Add note',
               style: TextStyle(
                 fontSize: 15,
-                // color: Colors.grey,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _notesController,
               maxLines: 5,
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Enter your notes here...',
-                hintStyle: const TextStyle(color: Colors.grey),
+                hintStyle: TextStyle(color: hintColor),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(color: borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: borderColor),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -321,22 +333,19 @@ class _AddExerciseViewState extends State<AddExerciseView> {
     );
   }
 
-  // ── ADDED: title field widget ────────────────────────────────────────────────
-  // Styled to match the other rows but uses an inline TextField so the user
-  // can type freely without opening a separate dialog.
-  Widget _buildTitleField() {
+  Widget _buildTitleField(Color textColor, Color? hintColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 110,
             child: Text(
               'Title',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: textColor,
               ),
             ),
           ),
@@ -344,10 +353,10 @@ class _AddExerciseViewState extends State<AddExerciseView> {
             child: TextField(
               controller: _titleController,
               textCapitalization: TextCapitalization.sentences,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: TextStyle(fontSize: 14, color: textColor),
               decoration: InputDecoration(
                 hintText: 'e.g. Morning Walk',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                hintStyle: TextStyle(color: hintColor, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -373,6 +382,7 @@ class _AddExerciseViewState extends State<AddExerciseView> {
     required String label,
     required String value,
     required VoidCallback onTap,
+    required Color textColor,
   }) {
     return InkWell(
       onTap: onTap,
@@ -383,19 +393,19 @@ class _AddExerciseViewState extends State<AddExerciseView> {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: textColor,
               ),
             ),
             Row(
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -413,14 +423,18 @@ class _AddExerciseViewState extends State<AddExerciseView> {
   }
 
   void _showExerciseTypePicker() {
+    final isDark = context.read<AnalyticsAppState>().darkMode;
+    final sheetBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -441,7 +455,7 @@ class _AddExerciseViewState extends State<AddExerciseView> {
               ...ExerciseType.values.map((type) {
                 return ListTile(
                   leading: Icon(type.icon, color: type.color),
-                  title: Text(type.displayName),
+                  title: Text(type.displayName, style: TextStyle(color: textColor)),
                   trailing: _selectedType == type
                       ? const Icon(Icons.check, color: Colors.blue)
                       : null,
@@ -485,15 +499,19 @@ class _AddExerciseViewState extends State<AddExerciseView> {
   }
 
   void _showDurationPicker() {
+    final isDark = context.read<AnalyticsAppState>().darkMode;
+    final sheetBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
           height: 250,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -532,6 +550,7 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                             fontWeight: minutes == _durationMinutes
                                 ? FontWeight.bold
                                 : FontWeight.normal,
+                            color: textColor,
                           ),
                         ),
                       );
@@ -610,18 +629,8 @@ class _AddExerciseViewState extends State<AddExerciseView> {
       return 'Yesterday';
     } else {
       final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
       return '${_getDayName(date.weekday)} ${date.day} ${months[date.month - 1]}';
     }

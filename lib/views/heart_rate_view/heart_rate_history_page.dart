@@ -21,7 +21,7 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
   void _showDeleteBottomSheet(HeartRateModel record) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -215,7 +215,6 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
     }
   }
 
-  // Build the simple weekly chart using bar-like dots
   Widget _buildWeeklyChart(List<HeartRateModel> allRecords) {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final now = DateTime.now();
@@ -243,7 +242,7 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -256,7 +255,6 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title + Week/Month toggle
           Row(
             children: [
               const Text(
@@ -307,7 +305,7 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
 
           const SizedBox(height: 16),
 
-          // Simple bar chart
+          // bar chart
           SizedBox(
             height: 80,
             child: Row(
@@ -353,10 +351,10 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: Colors.black),
@@ -413,19 +411,19 @@ class _HeartRateHistoryPageState extends State<HeartRateHistoryPage> {
                     ? Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'No heart rate records today.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                 )
                     : Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(

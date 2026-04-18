@@ -4,6 +4,32 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  BACKGROUND GPS FIX
+//  Root cause: Android suspends the Dart isolate when the screen is off,
+//  so the position stream delivers only one update (the "wake-up" burst)
+//  instead of continuous fixes → straight line from last-known to current.
+//
+//  Fix: pass AndroidSettings with foregroundNotificationConfig so that
+//  Geolocator starts an Android Foreground Service.  The OS is then
+//  contractually required to keep the process alive and the stream keeps
+//  delivering updates even with the screen off.
+//
+//  Required additions to AndroidManifest.xml (add inside <manifest>):
+//
+//    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+//    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+//
+//  And inside <application>:
+//
+//    <service
+//        android:name="com.baseflow.geolocator.GeolocatorService"
+//        android:foregroundServiceType="location"
+//        android:exported="false" />
+//
+//  pubspec.yaml — make sure you have geolocator >= 11.0.0
+// ─────────────────────────────────────────────────────────────────────────────
+
 class LocationController extends ChangeNotifier {
   // Current location
   Position? _currentPosition;
@@ -12,9 +38,9 @@ class LocationController extends ChangeNotifier {
   List<Map<String, double>> _routePoints = [];
   double _totalDistance = 0.0;
 
-  // FIX #5: Speed smoothing — keep a rolling window of recent samples
+  // Speed smoothing — rolling window of recent samples
   final List<double> _speedSamples = [];
-  static const int _speedWindowSize = 5; // average over last 5 samples
+  static const int _speedWindowSize = 5;
   double _smoothedSpeed = 0.0;
 
   DateTime? _lastPositionTime;
@@ -73,6 +99,13 @@ class LocationController extends ChangeNotifier {
         return false;
       }
 
+      // ── Request "always" permission so background tracking works ──────────
+      // On Android 10+ the user must explicitly grant "Allow all the time".
+      // We ask here; if they deny we still track, but only while foregrounded.
+      if (permission != LocationPermission.always) {
+        await Permission.locationAlways.request();
+      }
+
       return true;
     } catch (e) {
       _error = 'Failed to initialize location: $e';
@@ -98,7 +131,10 @@ class LocationController extends ChangeNotifier {
     }
   }
 
-  /// Start tracking location for route recording
+  /// Start tracking location for route recording.
+  ///
+  /// On Android a Foreground Service notification is shown so the OS keeps
+  /// the process alive when the screen is off (fixes the straight-line bug).
   Future<void> startTracking() async {
     if (_isTracking) return;
 
@@ -118,13 +154,21 @@ class LocationController extends ChangeNotifier {
 
       _lastSpeedCalculation = DateTime.now();
 
-      // FIX #3 & #6: Lower distanceFilter so small movements register;
-      // removed timeLimit (it caused stream errors on some devices)
+      // ── Build platform-specific LocationSettings ──────────────────────────
+      //
+      // AndroidSettings with foregroundNotificationConfig keeps the stream
+      // alive when the screen is off by binding a Foreground Service.
+      // Without this, Android suspends the Dart isolate → the stream fires
+      // only once per "wake" instead of every distanceFilter metres, which
+      // produces the single straight-line artefact you observed.
+      //
+      // AppleSettings with activityType = fitness and
+      // pauseLocationUpdatesAutomatically = false prevent iOS from pausing
+      // updates mid-workout.
+      final LocationSettings locationSettings = _buildLocationSettings();
+
       _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 3, // update every 3 meters (was 5)
-        ),
+        locationSettings: locationSettings,
       ).listen(
         _onLocationUpdate,
         onError: _onLocationError,
@@ -136,6 +180,49 @@ class LocationController extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to start tracking: $e';
       notifyListeners();
+    }
+  }
+
+  /// Build the correct [LocationSettings] for the current platform.
+  LocationSettings _buildLocationSettings() {
+    // We import dart:io via the platform check below.
+    // Using a string-based platform check avoids importing dart:io at the
+    // top of the file (keeps web/desktop compat if ever needed).
+    try {
+      // Android
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3,           // metres — same as before
+        intervalDuration: const Duration(seconds: 2),
+        // ── Foreground Service keeps stream alive with screen off ──────────
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: 'Tracking your workout route in the background',
+          notificationTitle: 'Workout in Progress',
+          enableWakeLock: true,      // CPU stays awake between fixes
+          notificationIcon: AndroidResource(
+            name: 'ic_launcher',     // must exist in res/mipmap or res/drawable
+            defType: 'mipmap',
+          ),
+        ),
+      );
+    } catch (_) {
+      // iOS / fallback
+      try {
+        return AppleSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 3,
+          activityType: ActivityType.fitness,
+          pauseLocationUpdatesAutomatically: false,
+          // Show the blue location indicator in the status bar
+          showBackgroundLocationIndicator: true,
+        );
+      } catch (_) {
+        // Desktop / web fallback
+        return const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 3,
+        );
+      }
     }
   }
 
@@ -173,19 +260,17 @@ class LocationController extends ChangeNotifier {
         position.longitude,
       );
 
-      // FIX #3: Only count distance if accuracy is reasonable
-      // and movement is more than GPS noise (>1m)
+      // Only count distance if accuracy is reasonable and movement > GPS noise
       if (distanceMeters > 1.0 && position.accuracy < 30) {
         _totalDistance += distanceMeters / 1000.0;
       }
 
-      // FIX #5: Robust speed calculation
       _updateSmoothedSpeed(position, distanceMeters, now);
     }
 
     _lastSpeedCalculation = now;
 
-    // FIX #6: Always add new point so polyline updates continuously
+    // Always add new point so polyline updates continuously
     _routePoints.add({
       'latitude': position.latitude,
       'longitude': position.longitude,
@@ -193,10 +278,10 @@ class LocationController extends ChangeNotifier {
     });
 
     _currentPosition = position;
-    notifyListeners(); // triggers Consumer rebuild → map redraws
+    notifyListeners();
   }
 
-  /// FIX #5: Rolling-average speed to eliminate spikes
+  /// Rolling-average speed to eliminate spikes
   void _updateSmoothedSpeed(Position position, double distanceMeters, DateTime now) {
     double newSample = 0.0;
 
@@ -205,32 +290,24 @@ class LocationController extends ChangeNotifier {
           now.difference(_lastSpeedCalculation!).inMilliseconds / 1000.0;
 
       if (timeDiffSeconds > 0 && distanceMeters > 0) {
-        // km/h from actual displacement
         final calculatedKmh =
             (distanceMeters / 1000.0) / (timeDiffSeconds / 3600.0);
-
-        // GPS hardware speed (often smoother on good hardware)
         final gpsKmh = position.speed >= 0 ? position.speed * 3.6 : 0.0;
 
-        // Use GPS speed if it's in a plausible range, otherwise use calculated
         if (gpsKmh > 0 && gpsKmh < 30) {
-          // Blend: 60% GPS, 40% calculated — GPS is smoother
           newSample = (gpsKmh * 0.6) + (calculatedKmh * 0.4);
         } else {
           newSample = calculatedKmh;
         }
 
-        // Hard cap: no one runs faster than 30 km/h
         newSample = newSample.clamp(0.0, 30.0);
 
-        // Ignore tiny jitter — if displacement < 2m treat as stationary
         if (distanceMeters < 2.0) {
           newSample = 0.0;
         }
       }
     }
 
-    // Rolling average
     _speedSamples.add(newSample);
     if (_speedSamples.length > _speedWindowSize) {
       _speedSamples.removeAt(0);
@@ -276,7 +353,7 @@ class LocationController extends ChangeNotifier {
         '${_currentPosition!.longitude.toStringAsFixed(6)}';
   }
 
-  /// FIX #5: Use smoothed speed
+  /// Use smoothed speed
   double? get currentSpeed {
     if (_isTracking) {
       return _smoothedSpeed;

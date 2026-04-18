@@ -4,6 +4,8 @@ import 'dart:async';
 import '../../controllers/exercise_controller.dart';
 import '../../controllers/pedometer_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
+import '../../services/exercise_calorie_calculator.dart'; // ← ADD THIS
 import 'exercise_add_view.dart';
 import 'exercise_detail_view.dart';
 import 'exercise_live_view.dart';
@@ -21,13 +23,16 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
   PedometerController? _pedometer;
 
+  // ── Calorie calculator instance ─────────────────────────────────────────────
+  final CalorieCalculator _calorieCalculator = CalorieCalculator(); // ← ADD THIS
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pedometer =
-      Provider.of<PedometerController>(context, listen: false);
+          Provider.of<PedometerController>(context, listen: false);
 
       // Wire the auto-save callback BEFORE starting detection
       _pedometer!.onAutoSave = _handleAutoSave;
@@ -67,13 +72,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
     final title = _generateAutoTitle(startTime);
 
+    // ── Calculate calories from steps ────────────────────────────────────────
+    final calories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : null;
+
     final exercise = Exercise(
       title: title,
       type: ExerciseType.walking,
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      isAutoDetected: true, // ← locks numeric fields in detail view
+      energyExpended: calories,          // ← ADD THIS
+      isAutoDetected: true,
     );
 
     final success = await exerciseController.createExercise(exercise);
@@ -87,7 +98,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                 : 'Failed to save detected walk',
           ),
           backgroundColor: success ? const Color(0xFF43A047) : Colors.red,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 20),
         ),
       );
     }
@@ -159,13 +170,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
     if (title.isEmpty) return;
 
+    // ── Calculate calories from steps ────────────────────────────────────────
+    final calories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : null;
+
     final exercise = Exercise(
       title: title,
       type: ExerciseType.walking,
       startTime: startTime,
       durationMinutes: durationMinutes,
       steps: steps > 0 ? steps : null,
-      isAutoDetected: true, // user saved from banner → also read-only
+      energyExpended: calories,          // ← ADD THIS
+      isAutoDetected: true,
     );
 
     final success = await exerciseController.createExercise(exercise);
@@ -185,8 +202,14 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AnalyticsAppState>();
+    final isDark = appState.darkMode;
+    final bg = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,26 +219,26 @@ class _ExerciseListViewState extends State<ExerciseListView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Exercise',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: textColor,
                     ),
                   ),
                   Text(
                     _getTodayDate(),
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    style: TextStyle(fontSize: 13, color: subTextColor),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
                   ),
@@ -239,23 +262,23 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
                         // Today's Log
                         if (controller.todayExercises.isNotEmpty) ...[
-                          _buildSectionHeader("Today's Log"),
+                          _buildSectionHeader("Today's Log", subTextColor),
                           const SizedBox(height: 16),
                           ...controller.todayExercises
-                              .map((e) => _buildExerciseCard(context, e)),
+                              .map((e) => _buildExerciseCard(context, e, isDark)),
                           const SizedBox(height: 24),
                         ],
 
                         // Past Log
                         if (controller.pastExercises.isNotEmpty) ...[
-                          _buildSectionHeader('Past exercise Log'),
+                          _buildSectionHeader('Past exercise Log', subTextColor),
                           const SizedBox(height: 16),
                           ...controller.pastExercises
-                              .map((e) => _buildExerciseCard(context, e)),
+                              .map((e) => _buildExerciseCard(context, e, isDark)),
                         ],
 
                         if (controller.exercises.isEmpty)
-                          _buildEmptyState(context),
+                          _buildEmptyState(context, isDark),
                       ],
                     );
                   },
@@ -288,6 +311,11 @@ class _ExerciseListViewState extends State<ExerciseListView> {
         : Duration.zero;
     final minutes = elapsed.inMinutes;
     final steps = pedometer.autoDetectedSteps;
+
+    // ── Estimate calories for the banner ─────────────────────────────────────
+    final estimatedCalories = steps > 0
+        ? _calorieCalculator.estimateCaloriesFromSteps(steps)
+        : 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -344,13 +372,18 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
           const SizedBox(height: 10),
 
-          // Stats row
+          // Stats row — now includes calories
           Row(
             children: [
               _buildBannerStat(Icons.access_time, '$minutes min', 'Duration'),
               const SizedBox(width: 12),
-              if (steps > 0)
+              if (steps > 0) ...[
                 _buildBannerStat(Icons.directions_walk, '$steps', 'Steps'),
+                const SizedBox(width: 12),
+                // ── NEW: calories stat ──────────────────────────────────
+                _buildBannerStat(
+                    Icons.local_fire_department, '$estimatedCalories', 'Cal'),
+              ],
             ],
           ),
 
@@ -445,12 +478,12 @@ class _ExerciseListViewState extends State<ExerciseListView> {
   }
 
   // ── Section header ──────────────────────────────────────────────────────────
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, Color? color) {
     return Text(
       title,
       style: TextStyle(
           fontSize: 16,
-          color: Colors.grey[600],
+          color: color,
           fontWeight: FontWeight.w400),
     );
   }
@@ -561,10 +594,15 @@ class _ExerciseListViewState extends State<ExerciseListView> {
   }
 
   // ── Exercise card — colour-classified by type ───────────────────────────────
-  Widget _buildExerciseCard(BuildContext context, Exercise exercise) {
+  Widget _buildExerciseCard(BuildContext context, Exercise exercise, bool isDark) {
     final bg = exercise.type.cardBackground;
     final accent = exercise.type.cardAccent;
     final iconColor = exercise.type.cardAccent;
+    final titleColor = isDark ? Colors.white : Colors.black87;
+    final subColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final cardBg = isDark
+        ? Color.alphaBlend(bg.withOpacity(0.3), const Color(0xFF1E1E1E))
+        : bg;
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -575,7 +613,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: bg,
+          color: cardBg,
           borderRadius: BorderRadius.circular(16),
           border: Border(
             left: BorderSide(color: accent, width: 4),
@@ -595,7 +633,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                         Text(
                           'created at ${exercise.formattedTime}',
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey[500]),
+                              fontSize: 11, color: subColor),
                         ),
                         if (exercise.isAutoDetected) ...[
                           const SizedBox(width: 6),
@@ -630,10 +668,10 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                       exercise.title.isNotEmpty
                           ? exercise.title
                           : exercise.type.displayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87),
+                          color: titleColor),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -641,19 +679,19 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                           ? '${exercise.formattedDistance} in ${exercise.formattedDuration}'
                           : exercise.formattedDuration,
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600]),
+                          fontSize: 13, color: subColor),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         Text(exercise.formattedDate,
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500])),
+                                fontSize: 12, color: subColor)),
                         const Spacer(),
                         if (exercise.steps != null)
                           Text(exercise.formattedSteps,
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[500])),
+                                  fontSize: 12, color: subColor)),
                       ],
                     ),
                   ],
@@ -680,28 +718,27 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, bool isDark) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fitness_center, size: 80, color: Colors.grey[300]),
+            Icon(Icons.fitness_center, size: 80, color: isDark ? Colors.grey[700] : Colors.grey[300]),
             const SizedBox(height: 16),
             Text('No exercises yet',
                 style: TextStyle(
                     fontSize: 18,
-                    color: Colors.grey[500],
+                    color: isDark ? Colors.grey[400] : Colors.grey[500],
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Text('Tap the + button to add your first exercise',
-                style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[600] : Colors.grey[400]),
                 textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
-
 }
