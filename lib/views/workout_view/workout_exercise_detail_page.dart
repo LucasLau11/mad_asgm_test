@@ -23,7 +23,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
   final Map<String, String> _exerciseToBodyPart = {
     'Squat': 'Leg',
-    'Sit-up': 'Abdominal Muscle',
+    'Jumping Jack': 'Full Body',
     'Push-ups': 'Chest',
   };
 

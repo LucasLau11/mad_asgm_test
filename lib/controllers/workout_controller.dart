@@ -56,7 +56,26 @@ class WorkoutController {
   Future<void> deleteWorkout(String id) async {
     await _dbService.deleteWorkout(id);
   }
-
+  Future<List<Map<String, dynamic>>> getWorkoutHistory(int userId) async {
+    return await _dbService.getHistoryByUserId(userId);
+  }
+  Future<List<Map<String, dynamic>>> getAllWorkoutHistory() async {
+    return await _dbService.getAllWorkoutHistory();
+  }
+  /// Saves a completed workout session record
+  Future<void> logWorkoutCompletion({
+    required int userId,
+    required String workoutName,
+    required int duration,
+    required double calories,
+  }) async {
+    await _dbService.insertWorkoutHistory(
+      userId: userId,
+      workoutName: workoutName,
+      duration: duration,
+      calories: calories,
+    );
+  }
   // Helper method to seed initial data if database is empty
 /*  Future<void> seedDatabaseIfNeeded() async {
     final workouts = await getAllWorkouts();

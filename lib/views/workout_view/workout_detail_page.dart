@@ -4,7 +4,7 @@ import '../../controllers/workout_controller.dart';
 import '../../models/workout_model/workout_model.dart';
 import '../../models/workout_model/workout_exercise_model.dart';
 import 'workout_exercise_detail_page.dart';
-
+import 'dart:io';
 class WorkoutDetailPage extends StatefulWidget {
   final Workout workout;
 
@@ -80,32 +80,20 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     children: [
                       Container(
-                        height: 200,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: '${widget.workout.name.split(' ')[0].toUpperCase()} ',
-                                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.red, letterSpacing: 2),
-                                    ),
-                                    const TextSpan(
-                                      text: 'DAY',
-                                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87, letterSpacing: 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          height: 200,
+                          width: double.infinity, // Ensures the container fills the width
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            // Move the image property here inside BoxDecoration
+                            image: DecorationImage(
+                              image: (widget.workout.imageUrl == null || widget.workout.imageUrl.isEmpty)
+                                  ? const AssetImage('assets/images/fitpulse.png') as ImageProvider
+                                  : FileImage(File(widget.workout.imageUrl)),
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                        ),
                       ),
-
                       const SizedBox(height: 20),
 
                       Container(
@@ -118,10 +106,13 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                             const SizedBox(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildInfoItem('Strength', 'Goals'),
-                                _buildInfoItem('${widget.workout.durationMinutes} mins', 'Time'),
-                                _buildInfoItem(widget.workout.difficulty, 'Difficulties'),
+                                Expanded(child: _buildInfoItem(widget.workout.goal, 'Goals')),
+                                const SizedBox(width: 8), // Added small gap
+                                Expanded(child: _buildInfoItem('${widget.workout.durationMinutes} mins', 'Time')),
+                                const SizedBox(width: 8), // Added small gap
+                                Expanded(child: _buildInfoItem(widget.workout.difficulty, 'Difficulty')),
                               ],
                             ),
                           ],
@@ -179,11 +170,30 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
   }
 
   Widget _buildInfoItem(String value, String label) {
-    return Column(children: [
-      Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-      const SizedBox(height: 4),
-      Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-    ]);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87
+          ),
+
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          softWrap: false,
+
+        ),
+        const SizedBox(height: 4),
+        Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600])
+        ),
+      ],
+    );
   }
 
   Widget _buildExerciseItem(Exercise exercise) {

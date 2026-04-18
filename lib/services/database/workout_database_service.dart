@@ -34,11 +34,13 @@ class WorkoutDatabaseService {
         id TEXT PRIMARY KEY,
         userId INTEGER NOT NULL,
         name TEXT NOT NULL,
+        goal TEXT,
         description TEXT,
         exerciseCount INTEGER,
         durationMinutes INTEGER,
         difficulty TEXT,
-        color TEXT
+        color TEXT,
+        imageUrl TEXT
       )
     ''');
 
@@ -93,7 +95,13 @@ class WorkoutDatabaseService {
       orderBy: 'completedAt DESC',
     );
   }
-
+  Future<List<Map<String, dynamic>>> getAllWorkoutHistory() async {
+    final db = await database;
+    return await db.query(
+        'workout_history',
+        orderBy: 'completedAt DESC' // Keep newest at the top
+    );
+  }
   // --- Workout CRUD ---
   Future<void> insertWorkout(Workout workout) async {
     final db = await database;

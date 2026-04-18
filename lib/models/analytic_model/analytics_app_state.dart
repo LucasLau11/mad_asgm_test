@@ -254,7 +254,7 @@ class AnalyticsAppState extends ChangeNotifier {
 
     await Future.wait([
       analyticsController.loadModel(),
-      analyticsController.loadData(),
+      analyticsController.loadData(_currentUserId),
     ]);
 
     notifyListeners();
@@ -289,7 +289,7 @@ class AnalyticsAppState extends ChangeNotifier {
   Future<void> refreshAnalytics() async {
     _analyticsLoading = true;
     notifyListeners();
-    await analyticsController.loadData();
+    await analyticsController.loadData(_currentUserId);
     _analyticsLoading = false;
     notifyListeners();
   }

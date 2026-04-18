@@ -28,14 +28,14 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
   late String _selectedGoal;
   late String _selectedDifficulty;
-
+  late String? _previewImagePath;
   final List<String> _goals = ['Strength', 'Cardio', 'Flexibility', 'Weight Loss', 'Muscle Gain'];
   final List<String> _difficulties = ['Beginner', 'Intermediate', 'Advanced'];
 
   // Exercise library mapping for auto-select
   final Map<String, String> _exerciseToBodyPart = {
     'Squat': 'Leg',
-    'Sit-up': 'Abdominal Muscle',
+    'Jumping Jack': 'Full Body',
     'Push-ups': 'Chest',
   };
 
@@ -47,7 +47,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   };
   final Map<String, String> _predefinedInstructions = {
     'Squat': '1. Stand with feet shoulder-width apart.\n2. Keep your back straight and lower your hips as if sitting in a chair.\n3. Go down until thighs are parallel to the floor.\n4. Push through heels to return to start.',
-    'Sit-up': '1. Lie on your back with your knees bent and feet flat on the floor.\n2. Place your hands behind your head or cross them over your chest.\n3. Engage your core and lift your upper body until your chest is near your thighs.\n4. Slowly lower your back down to the starting position.',
+    'Jumping Jack': '1. Stand upright with your feet together and arms at your sides.\n2. Jump while spreading your legs shoulder-width apart and raising your arms overhead.\n3. Quickly reverse the movement by jumping back to the starting position.\n4. Repeat in a steady rhythm while keeping your core engaged.',
     'Push-ups': '1. Start in a plank position.\n2. Lower your body until your chest nearly touches the floor.\n3. Keep your core tight and back flat.\n4. Push back up to the starting position.',
   };
   // Exercise fields
@@ -62,8 +62,35 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
     _durationController = TextEditingController(text: widget.workout.durationMinutes.toString());
     _selectedGoal = 'Strength';
     _selectedDifficulty = widget.workout.difficulty;
-
+    _previewImagePath = widget.workout.imageUrl;
     _loadExercises();
+  }
+  Future<void> _pickPreviewImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+
+      if (pickedFile != null) {
+        final file = File(pickedFile.path);
+        final int fileSize = await file.length();
+
+        if (fileSize > 2 * 1024 * 1024) { // 2MB Limit
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Image must be less than 2MB'), backgroundColor: Colors.orange),
+            );
+          }
+          return;
+        }
+        setState(() {
+          _previewImagePath = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking preview image: $e');
+    }
   }
 
   void _syncDifficultyFromExercises() {
@@ -226,11 +253,13 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
           id: widget.workout.id,
           userId: widget.workout.userId,
           name: _programNameController.text,
+          goal:_selectedGoal,
           description: '${_exercises.length} exercises - ${_durationController.text} min',
           exerciseCount: _exercises.length,
           durationMinutes: int.tryParse(_durationController.text) ?? 30,
           difficulty: _selectedDifficulty,
           color: widget.workout.color,
+          imageUrl: _previewImagePath ?? '',
         );
 
         final updatedExercises = _exercises.map((f) => Exercise(
@@ -350,7 +379,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                               _buildLabel('Goal'),
                               _buildDropdown(value: _selectedGoal, items: _goals, onChanged: (value) => setState(() => _selectedGoal = value!)),
                               const SizedBox(height: 16),
-                              _buildLabel('Durations'),
+                              _buildLabel('Durations (Estimated in mins)'),
                               GestureDetector(
                                 onTap: _showAndroidTimerPicker,
                                 child: Container(
@@ -379,7 +408,43 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                               ),
                               const SizedBox(height: 16),
                               _buildLabel('Preview Image'),
-                              _buildUploadField('Tap to select preview image', Icons.upload, () {}),
+                              const SizedBox(height: 8),
+                              _previewImagePath != null && _previewImagePath!.isNotEmpty
+                                  ? Stack(
+                                children: [
+                                  Container(
+                                    height: 160,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      image: DecorationImage(
+                                        // Logic to handle both local file paths and assets
+                                        image: _previewImagePath!.startsWith('assets/')
+                                            ? AssetImage(_previewImagePath!) as ImageProvider
+                                            : FileImage(File(_previewImagePath!)),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _previewImagePath = ''), // Clear to use fallback
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                        child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                                  : _buildUploadField(
+                                'Tap to select preview image',
+                                Icons.upload,
+                                _pickPreviewImage, // Now calls the function
+                              ),
                             ],
                           ),
                         ),
@@ -496,7 +561,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   }
 
   Widget _buildExerciseForm(EditExerciseForm exercise, int index) {
-    final bodyParts = ['Leg', 'Chest', 'Arm', 'Back', 'Shoulder', 'Abdominal Muscle'];
+    final bodyParts = ['Leg', 'Chest', 'Arm', 'Back', 'Shoulder', 'Full Body'];
     final exerciseNames = _exerciseToBodyPart.keys.toList();
 
     return Container(
