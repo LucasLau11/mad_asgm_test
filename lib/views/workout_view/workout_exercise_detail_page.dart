@@ -55,7 +55,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         : _fallbackImages;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -67,15 +67,15 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                     onTap: () => Navigator.pop(context),
                     child: Container(
                       width: 40, height: 40,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.arrow_back, color: Colors.black87),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(12)),
+                      child:  Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       widget.exercise.name,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                      style:  TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -106,13 +106,15 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                                 path,
                                 fit: BoxFit.cover,
                                 loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
-                                errorBuilder: (context, error, stack) => const Center(child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey)),
+                                errorBuilder: (context, error, stack) =>  Center(child: Icon(Icons.image_not_supported, size: 50, color: Theme.of(context).colorScheme.onSurfaceVariant
+                                )),
                               );
                             } else {
                               return Image.file(
                                 File(path),
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stack) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
+                                errorBuilder: (context, error, stack) =>  Center(child: Icon(Icons.broken_image, size: 50, color: Theme.of(context).colorScheme.onSurfaceVariant
+                                )),
                               );
                             }
                           },
@@ -155,7 +157,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                               (index) => Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
                                 width: 8, height: 8,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5)),
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: _currentPage == index ? Colors.white : Colors.white .withOpacity(0.5)),
                               ),
                             ),
                           ),
@@ -176,13 +178,21 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16),boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                        spreadRadius: 2,
+                      ),
+                    ],),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Instructions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                         Text('Instructions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 16),
-                        Text(widget.exercise.instructions, style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.5)),
+                        Text(widget.exercise.instructions, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface
+                            , height: 1.5)),
                       ],
                     ),
                   ),
@@ -199,12 +209,19 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   Widget _buildControlRow(String label, dynamic value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16),boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+          spreadRadius: 2,
+        ),
+      ],),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Label on the left
-          Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+          Text(label, style: TextStyle(fontSize: 16, color:  Theme.of(context).colorScheme.onSurface)),
 
           const SizedBox(width: 16), // Add some spacing between label and value
 
@@ -215,10 +232,10 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
               textAlign: TextAlign.end, // Keep the text aligned to the right
               overflow: TextOverflow.ellipsis, // This adds the "..."
               maxLines: 1, // Ensure it stays on one line
-              style: const TextStyle(
+              style:  TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87
+                  color: Theme.of(context).colorScheme.onSurface
               ),
             ),
           ),

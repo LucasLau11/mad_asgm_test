@@ -315,7 +315,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -325,10 +325,10 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
+                    child:  Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface, size: 28),
                   ),
                   const SizedBox(width: 16),
-                  const Text('Edit Workout ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                   Text('Edit Workout ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 ],
               ),
             ),
@@ -349,13 +349,13 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                               Container(
                                 width: 50, height: 50,
                                 decoration: BoxDecoration(color: const Color(0xFF9FA8DA), borderRadius: BorderRadius.circular(12)),
-                                child: const Icon(Icons.edit, color: Colors.white, size: 28),
+                                child:  Icon(Icons.edit, color: Theme.of(context).colorScheme.surface, size: 28),
                               ),
                               const SizedBox(width: 16),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Edit Record', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                                   Text('Edit Record', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
                                   // Text('ID: ${widget.workout.id}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                                 ],
                               ),
@@ -367,11 +367,19 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
                         Container(
                           padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16) ,
+                            boxShadow: [
+                          BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                          spreadRadius: 2,
+                        ),
+                      ],),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Update Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                               Text('Update Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                               const SizedBox(height: 20),
                               _buildLabel('Program name'),
                               _buildTextField(controller: _programNameController, hintText: 'Leg Workout'),
@@ -384,12 +392,12 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                                 onTap: _showAndroidTimerPicker,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4), borderRadius: BorderRadius.circular(12)),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('${_durationController.text} mins', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                                      const Icon(Icons.timer, color: Colors.grey),
+                                      Text('${_durationController.text} mins', style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                                       Icon(Icons.timer, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ],
                                   ),
                                 ),
@@ -434,7 +442,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                        child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                        child:  Icon(Icons.close, color: Theme.of(context).colorScheme.surface, size: 20),
                                       ),
                                     ),
                                   ),
@@ -454,7 +462,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Exercise(s)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                             Text('Exercise(s)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                             TextButton.icon(
                               onPressed: _addExercise,
                               icon: const Icon(Icons.add, size: 18),
@@ -479,7 +487,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                             onPressed: _saveChanges,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDAD9FF),
-                              foregroundColor: Colors.black87,
+                              foregroundColor: Theme.of(context).colorScheme.onSurface,
                               padding: const EdgeInsets.symmetric(vertical: 18),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),
@@ -520,13 +528,13 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   Widget _buildTextField({required TextEditingController controller, required String hintText, TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4) , borderRadius: BorderRadius.circular(12)),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
         decoration: InputDecoration(hintText: hintText, border: InputBorder.none, hintStyle: TextStyle(color: Colors.grey[500])),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+        style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
         validator: (value) => value == null || value.isEmpty ? 'Required' : null,
       ),
     );
@@ -535,13 +543,13 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   Widget _buildDropdown({required String value, required List<String> items, required ValueChanged<String?> onChanged, bool enabled = true}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: enabled ? Colors.grey[200] : Colors.grey[300], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: enabled ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4) : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: Icon(Icons.keyboard_arrow_down, color: enabled ? Colors.black87 : Colors.grey),
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: enabled ? Colors.black87 : Colors.grey[600]),
+          icon: Icon(Icons.keyboard_arrow_down, color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant),
           items: items.map((String item) => DropdownMenuItem<String>(value: item, child: Text(item))).toList(),
           onChanged: enabled ? onChanged : null,
         ),
@@ -554,8 +562,8 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(text, style: TextStyle(fontSize: 16, color: Colors.grey[600])), Icon(icon, color: Colors.grey[700])]),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4), borderRadius: BorderRadius.circular(12)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(text, style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)), Icon(icon, color: Colors.grey[700])]),
       ),
     );
   }
@@ -566,7 +574,15 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+          spreadRadius: 2,
+        ),
+      ],),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -574,7 +590,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Exercise ${index + 1}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('Exercise ${index + 1}', style:  TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _removeExercise(index)),
               ],
             ),
@@ -634,7 +650,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
                           child: Container(
                             padding: const EdgeInsets.all(2),
                             decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            child:  Icon(Icons.close, color: Theme.of(context).colorScheme.surface, size: 14),
                           ),
                         ),
                       ),
@@ -708,15 +724,15 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
   Widget _buildCounterField({required int value, required VoidCallback onDecrement, required VoidCallback onIncrement}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4), borderRadius: BorderRadius.circular(12)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(onTap: onDecrement, child: const Icon(Icons.remove, size: 20, color: Colors.black87)),
+          GestureDetector(onTap: onDecrement, child:  Icon(Icons.remove, size: 20, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(width: 16),
-          Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('$value', style:  TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(width: 16),
-          GestureDetector(onTap: onIncrement, child: const Icon(Icons.add, size: 20, color: Colors.black87)),
+          GestureDetector(onTap: onIncrement, child:  Icon(Icons.add, size: 20, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );

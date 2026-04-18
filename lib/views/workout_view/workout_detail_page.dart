@@ -41,7 +41,7 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -55,17 +55,17 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.arrow_back, color: Colors.black87),
+                      child:  Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       widget.workout.name,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                      style:  TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -83,7 +83,7 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                           height: 200,
                           width: double.infinity, // Ensures the container fills the width
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             borderRadius: BorderRadius.circular(20),
                             // Move the image property here inside BoxDecoration
                             image: DecorationImage(
@@ -98,15 +98,25 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
 
                       Container(
                         padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                            spreadRadius: 2,
+                          ),
+                        ],
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(widget.workout.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            Text(widget.workout.name, style:  TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                             const SizedBox(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               crossAxisAlignment: CrossAxisAlignment.start,
+
                               children: [
                                 Expanded(child: _buildInfoItem(widget.workout.goal, 'Goals')),
                                 const SizedBox(width: 8), // Added small gap
@@ -121,7 +131,8 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
 
                       const SizedBox(height: 24),
 
-                      Text('Exercises (${_exercises.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text('Exercises (${_exercises.length})', style:  TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface
+                      )),
                       const SizedBox(height: 16),
 
                       if (_exercises.isEmpty)
@@ -153,7 +164,15 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 18),
-                          decoration: BoxDecoration(color: const Color(0xFFDAD9FF), borderRadius: BorderRadius.circular(16)),
+                          decoration: BoxDecoration(color: const Color(0xFFDAD9FF), borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+    BoxShadow(
+    color: Colors.black.withOpacity(0.1),
+    blurRadius: 15,
+    offset: const Offset(0, 5),
+    spreadRadius: 2,
+    ),
+    ],),
                           child: const Center(
                             child: Text('Start Workout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                           ),
@@ -176,10 +195,10 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
         Text(
           value,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style:  TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87
+            color: Theme.of(context).colorScheme.onSurface,
           ),
 
           overflow: TextOverflow.ellipsis,
@@ -190,7 +209,7 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
         const SizedBox(height: 4),
         Text(
             label,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600])
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)
         ),
       ],
     );
@@ -203,27 +222,41 @@ class _WorkoutDetailPageState extends State<WorkoutDetailPage> {
       },
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color:Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16),boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+            spreadRadius: 2,
+          ),
+        ],),
         child: Row(
           children: [
-            Container(width: 50, height: 50, decoration: BoxDecoration(color: const Color(0xFFE8E4FF), borderRadius: BorderRadius.circular(12))),
+            Container(width: 50, height: 50, decoration: BoxDecoration(color: const Color(0xFFE8E4FF), borderRadius: BorderRadius.circular(12),boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+                spreadRadius: 2,
+              ),
+            ],)),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(exercise.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text(exercise.name, style:  TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 4),
-                  Text('x ${exercise.reps}', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                  Text('x ${exercise.reps}', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('${exercise.sets} sets', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text('${exercise.sets} sets', style:  TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 4),
-                 Text('More >', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                 Text('More >', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           ],

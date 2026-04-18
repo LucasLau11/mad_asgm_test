@@ -47,7 +47,7 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -57,10 +57,10 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
+                    child:  Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface, size: 28),
                   ),
                   const SizedBox(width: 16),
-                  const Text('Manage Workouts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text('Manage Workouts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 ],
               ),
             ),
@@ -96,7 +96,7 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
         ),
@@ -115,7 +115,7 @@ class _ManageWorkoutsPageState extends State<ManageWorkoutsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(workout.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text(workout.name, style:  TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 4),
                   Text(workout.description, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                 ],

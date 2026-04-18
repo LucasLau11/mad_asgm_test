@@ -326,7 +326,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -336,10 +336,10 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
+                    child:  Icon(Icons.arrow_back, color:Theme.of(context).colorScheme.onSurface, size: 28),
                   ),
                   const SizedBox(width: 16),
-                  const Text('Add Workout', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                   Text('Add Workout', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 ],
               ),
             ),
@@ -358,7 +358,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                           Container(
                             width: 50, height: 50,
                             decoration: BoxDecoration(color: const Color(0xFF9FA8DA), borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.add, color: Colors.white, size: 28),
+                            child:  Icon(Icons.add, color: Theme.of(context).colorScheme.surface, size: 28),
                           ),
                           const SizedBox(width: 16),
                           Column(
@@ -376,11 +376,18 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
 
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16), boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                          spreadRadius: 2,
+                        ),
+                      ],),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Add New Workout Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                           Text('Add New Workout Program', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                           const SizedBox(height: 20),
                           _buildLabel('Program name'),
                           _buildTextField(controller: _programNameController, hintText: 'Leg Workout'),
@@ -394,7 +401,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
-                                  color: Colors.grey[200],
+                                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
                                   borderRadius: BorderRadius.circular(12)
                               ),
                               child: Row(
@@ -402,9 +409,9 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                                 children: [
                                   Text(
                                     '${_durationController.text} mins',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+                                    style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                   ),
-                                  const Icon(Icons.timer_outlined, color: Colors.grey),
+                                   Icon(Icons.timer_outlined, color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4)),
                                 ],
                               ),
                             ),
@@ -440,7 +447,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                    child:  Icon(Icons.close, color: Theme.of(context).colorScheme.surface, size: 20),
                                   ),
                                 ),
                               ),
@@ -460,7 +467,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Exercise(s)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                         Text('Exercise(s)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         TextButton.icon(
                           onPressed: _addExercise,
                           icon: const Icon(Icons.add, size: 18),
@@ -504,19 +511,19 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   }
 
   Widget _buildLabel(String text) {
-    return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: TextStyle(fontSize: 14, color: Colors.grey[600])));
+    return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9))));
   }
 
   Widget _buildTextField({required TextEditingController controller, required String hintText, TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        decoration: InputDecoration(hintText: hintText, border: InputBorder.none, hintStyle: TextStyle(color: Colors.grey[500])),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+        decoration: InputDecoration(hintText: hintText, border: InputBorder.none, hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7))),
+        style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
         validator: (value) => value == null || value.isEmpty ? 'Required' : null,
       ),
     );
@@ -525,13 +532,15 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   Widget _buildDropdown({required String value, required List<String> items, required ValueChanged<String?> onChanged, bool enabled = true}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: enabled ? Colors.grey[200] : Colors.grey[300], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: enabled ? Theme.of(context).colorScheme.onSurface.withOpacity(0.05) : Theme.of(context).colorScheme.onSurface.withOpacity(0.02), borderRadius: BorderRadius.circular(12)),
+
+
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: Icon(Icons.keyboard_arrow_down, color: enabled ? Colors.black87 : Colors.grey),
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: enabled ? Colors.black87 : Colors.grey[600]),
+          icon: Icon(Icons.keyboard_arrow_down, color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4)),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4)),
           items: items.map((String item) => DropdownMenuItem<String>(value: item, child: Text(item))).toList(),
           onChanged: enabled ? onChanged : null,
         ),
@@ -544,8 +553,8 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(text, style: TextStyle(fontSize: 16, color: Colors.grey[600])), Icon(icon, color: Colors.grey[700])]),
+        decoration: BoxDecoration(color:Theme.of(context).colorScheme.onSurface.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(text, style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)), Icon(icon, color: Theme.of(context).colorScheme.primary)]),
       ),
     );
   }
@@ -556,7 +565,14 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16), boxShadow: [
+      BoxShadow(
+      color: Colors.black.withOpacity(0.1),
+      blurRadius: 15,
+      offset: const Offset(0, 5),
+      spreadRadius: 2,
+    ),
+    ],),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -564,7 +580,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Exercise ${index + 1}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('Exercise ${index + 1}', style:  TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                 IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _removeExercise(index)),
               ],
             ),
@@ -626,7 +642,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
                           child: Container(
                             padding: const EdgeInsets.all(2),
                             decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            child:  Icon(Icons.close, color: Theme.of(context).colorScheme.surface, size: 14),
                           ),
                         ),
                       ),
@@ -708,15 +724,15 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
   Widget _buildCounterField({required int value, required VoidCallback onDecrement, required VoidCallback onIncrement}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4), borderRadius: BorderRadius.circular(12)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(onTap: onDecrement, child: const Icon(Icons.remove, size: 20, color: Colors.black87)),
+          GestureDetector(onTap: onDecrement, child:  Icon(Icons.remove, size: 20, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(width: 16),
-          Text('$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('$value', style:  TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(width: 16),
-          GestureDetector(onTap: onIncrement, child: const Icon(Icons.add, size: 20, color: Colors.black87)),
+          GestureDetector(onTap: onIncrement, child:  Icon(Icons.add, size: 20, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );

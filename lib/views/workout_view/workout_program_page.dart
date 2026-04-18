@@ -39,7 +39,6 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
     setState(() => _isLoading = true);
     
     try {
-      // FIXED: Only load workouts for the currently logged-in user
       final currentUserId = DatabaseService.currentUserId;
       final workouts = await _controller.getWorkoutsByUserId(currentUserId);
       
@@ -91,7 +90,7 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           // This line is the key: it aligns all children to the left
@@ -105,12 +104,12 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                   Text(
                       'Workout Program',
                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87
+                          color: Theme.of(context).colorScheme.onSurface
                       )
                   ),
                   const SizedBox(height: 4),
@@ -134,9 +133,25 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: _isSearching ? [BoxShadow(color: Colors.blue.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                  boxShadow: [
+                    if (_isSearching)
+                    // Shadow when searching (Blue)
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    else if (Theme.of(context).brightness == Brightness.light)
+                    // Shadow when NOT searching but in Light Mode
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+
                 ),
                 child: Row(
                   children: [
