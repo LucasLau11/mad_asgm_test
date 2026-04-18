@@ -21,6 +21,8 @@
     <!-- Internet permission for maps (if using Google Maps) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
 
     <application
         android:label="mad_asgm"
@@ -56,6 +58,20 @@
         <service
             android:name="com.baseflow.geolocator.GeolocatorService"
             android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <!-- flutter_foreground_task — required for background step tracking -->
+        <!-- ADD this instead -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundTaskService"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false"
+            android:exported="false" />
+
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync|location"
+            android:stopWithTask="false"
             android:exported="false" />
 
 

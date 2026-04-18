@@ -27,8 +27,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pedometer =
-      Provider.of<PedometerController>(context, listen: false);
+      final pedometer = Provider.of<PedometerController>(context, listen: false);
 
       // Wire the auto-save callback BEFORE starting detection.
       pedometer.onAutoSave = _handleAutoSave;
@@ -36,13 +35,26 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       // ensureAutoDetectRunning() is idempotent — safe to call every time
       // the widget mounts (e.g. hot-restart, tab switch after kill).
       // It checks an internal flag so the service only starts once.
+      print('[ExerciseList] calling ensureAutoDetectRunning');
       pedometer.ensureAutoDetectRunning();
+    });
+
+    // ADD THIS — ensures the Consumer2 rebuilds when walk is detected
+    // even if the notification fires between frames
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PedometerController>(context, listen: false)
+          .addListener(_onPedometerUpdate);
     });
 
     // Redraw every 20 s so "X min" in the banner stays current.
     _bannerRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (mounted) setState(() {});
     });
+  }
+
+  // ADD this method
+  void _onPedometerUpdate() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -53,6 +65,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     final pedometer =
     Provider.of<PedometerController>(context, listen: false);
     pedometer.onAutoSave = null;
+    pedometer.removeListener(_onPedometerUpdate); // ADD THIS
     super.dispose();
   }
 
@@ -71,13 +84,11 @@ class _ExerciseListViewState extends State<ExerciseListView> {
 
   // ── Navigate to live workout ─────────────────────────────────────────────────
   Future<void> _launchLiveView(BuildContext context, ExerciseType type) async {
-    final pedometer =
-    Provider.of<PedometerController>(context, listen: false);
+    final pedometer = Provider.of<PedometerController>(context, listen: false);
 
     // Pause cadence evaluator so the live session's steps don't create a
     // false auto-walk banner when the user returns.
     await pedometer.pauseAutoDetect();
-
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -86,9 +97,11 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     );
 
     // Resume after returning — resets cadence baseline so no false trigger.
-    if (mounted) {
-      await pedometer.resumeAutoDetect();
-    }
+    // if (mounted) {
+    //   await pedometer.resumeAutoDetect();
+    // }
+
+    await pedometer.resumeAutoDetect();
   }
 
   // ── Auto-save handler (called by PedometerController) ───────────────────────
@@ -277,8 +290,15 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                     }
 
                     return ListView(
-                      padding: const EdgeInsets.all(20),
+                      // padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(10),
                       children: [
+                        //console not working, so I commented it out
+                        // Text(
+                        //   'Total steps taken since factory new: ${pedometer.totalSteps}',
+                        //   style: const TextStyle(fontSize: 16, color: Colors.blue),
+                        // ),
+
                         // ── Auto-walk banner ──────────────────────────────────
                         // Shows automatically whenever the background service
                         // detects walking AND the user is not in a live session.
@@ -330,7 +350,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
     );
   }
 
-  // ── Auto-walk banner ─────────────────────────────────────────────────────────
+  // ── Auto-walk banner ────────────────────────────────────────────────────
   Widget _buildAutoWalkBanner(
       BuildContext context, PedometerController pedometer) {
     final startTime = pedometer.autoDetectStartTime;
@@ -517,7 +537,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: [const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.play_circle_filled,

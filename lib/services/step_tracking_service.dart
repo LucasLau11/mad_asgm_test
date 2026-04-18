@@ -24,6 +24,7 @@ const String kMsgWalkStopped = 'walk_stopped';
 // ── Task handler – runs in the background isolate ────────────────────────────
 // The @pragma entry-point + startStepTaskCallback() that instantiates this
 // class MUST be declared in main.dart (Flutter requirement).
+
 class StepTaskHandler extends TaskHandler {
   StreamSubscription<StepCount>? _stepSub;
 
@@ -36,28 +37,45 @@ class StepTaskHandler extends TaskHandler {
   int? _walkStartEpoch;
   int  _walkBaseSteps     = 0;
 
-  static const int _cadenceThreshold = 40;
-  static const int _confirmWindows   = 3;
-  static const int _idleWindows      = 6;
-  static const int _maxWalkMinutes   = 90;
+  //testing ver
+  static const int _cadenceThreshold = 3;   // almost any movement counts
+  static const int _confirmWindows   = 2;   // 20s to trigger banner
+  static const int _idleWindows      = 2;   // 30s stop → auto-save
+  static const int _maxWalkMinutes   = 1;   // force auto-save after 5 min
+
+  // for real production
+  // static const int _cadenceThreshold = 8;
+  // static const int _confirmWindows   = 3;   // ~30s to confirm
+  // static const int _idleWindows      = 10;  // ~100s before auto-save
+  // static const int _maxWalkMinutes   = 90; //  walk 90min → auto-save
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    _lastCadenceCheck = DateTime.now();
+    _lastCadenceBase  = 0;
+
     _stepSub = Pedometer.stepCountStream.listen(
           (event) {
         _lastHardwareSteps = event.steps;
         FlutterForegroundTask.sendDataToMain({kMsgStepCount: event.steps});
+        _evaluateCadenceOnStep();
+        _checkMaxDuration();
       },
-      onError: (_) {},
+      onError: (error) {
+        // Send error to main isolate so we can see it
+        FlutterForegroundTask.sendDataToMain({'error': error.toString()});
+      },
     );
-    _lastCadenceBase = _lastHardwareSteps;
-  }
 
+    // Confirm onStart fired
+    FlutterForegroundTask.sendDataToMain({'started': true});
+  }
   // Fires every 10 000 ms as set in ForegroundTaskOptions.
   @override
   void onRepeatEvent(DateTime timestamp) {
+    FlutterForegroundTask.sendDataToMain({'tick': _lastHardwareSteps});
     if (!_paused) {
-      _evaluateCadence();
+      _evaluateCadenceOnStep();
       _checkMaxDuration();
     }
   }
@@ -83,12 +101,24 @@ class StepTaskHandler extends TaskHandler {
     }
   }
 
-  void _evaluateCadence() {
-    final delta      = _lastHardwareSteps - _lastCadenceBase;
-    _lastCadenceBase = _lastHardwareSteps;
-    final cadence    = delta * 6;
+  DateTime? _lastCadenceCheck;
 
-    if (cadence >= _cadenceThreshold) {
+  void _evaluateCadenceOnStep() {
+    if (_paused) return;
+
+    final now = DateTime.now();
+    _lastCadenceCheck ??= now;
+
+    final elapsedSeconds = now.difference(_lastCadenceCheck!).inSeconds;
+
+    // Only evaluate every 10 seconds
+    if (elapsedSeconds < 10) return;
+
+    final delta = _lastHardwareSteps - _lastCadenceBase;
+    _lastCadenceBase  = _lastHardwareSteps;
+    _lastCadenceCheck = now;
+
+    if (delta >= _cadenceThreshold) {
       _idleCount = 0;
       _confirmCount++;
 
@@ -138,7 +168,8 @@ class StepTaskHandler extends TaskHandler {
   }
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+
+// ── Public API ───────
 class StepTrackingService {
   StepTrackingService._();
 
@@ -159,15 +190,14 @@ class StepTrackingService {
         channelId:          'step_tracking',
         channelName:        'Step Tracking',
         channelDescription: 'Tracks your steps in the background',
-        // NOTE: iconData / ResourceType / ResourcePrefix were REMOVED in v8.
-        // Do not include them — they cause "Undefined name" compile errors.
+        onlyAlertOnce:      true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(
-        showNotification: true,
+        showNotification: false, //set to true to see notification of the autpdetect walking in the background
         playSound:        false,
       ),
       foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction:                ForegroundTaskEventAction.repeat(10000),
+        eventAction: ForegroundTaskEventAction.nothing(),
         autoRunOnBoot:              true,
         autoRunOnMyPackageReplaced: true,
         allowWakeLock:              true,
@@ -176,19 +206,17 @@ class StepTrackingService {
     );
   }
 
-  // FIX: startStepTaskCallback is defined in main.dart with @pragma.
-  // We accept it as a parameter here so this file has zero dependency on it.
-  static Future<void> startService({
-    required void Function() taskCallback,
-  }) async {
+  static Future<void> startService({required void Function() taskCallback}) async {
     if (await FlutterForegroundTask.isRunningService) {
       await FlutterForegroundTask.restartService();
+      // Restart keeps the handler alive — flush any stale _paused = true
+      FlutterForegroundTask.sendDataToTask({'cmd': 'resume'});
     } else {
       await FlutterForegroundTask.startService(
         serviceId:         256,
         notificationTitle: 'FitPulse',
-        notificationText:  'Monitoring your steps…',
-        callback:          taskCallback,           // ← passed in, not hardcoded
+        notificationText:  'Step tracking active',
+        callback:          taskCallback,
       );
     }
   }
@@ -196,11 +224,9 @@ class StepTrackingService {
   static Future<void> stopService() async {
     await FlutterForegroundTask.stopService();
   }
-
   static Future<void> pauseDetection() async {
     FlutterForegroundTask.sendDataToTask({'cmd': 'pause'});
   }
-
   static Future<void> resumeDetection() async {
     FlutterForegroundTask.sendDataToTask({'cmd': 'resume'});
   }
