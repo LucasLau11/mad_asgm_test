@@ -37,13 +37,31 @@ class StepTaskHandler extends TaskHandler {
   int? _walkStartEpoch;
   int  _walkBaseSteps     = 0;
 
-  //testing ver
+  ///testing ver
   static const int _cadenceThreshold = 3;   // almost any movement counts
+  /// need 3+ steps in a 10s window to count as "walking"
   static const int _confirmWindows   = 2;   // 20s to trigger banner
+  /// need 2 consecutive passing windows = 20s of walking → banner appears
   static const int _idleWindows      = 2;   // 30s stop → auto-save
+  /// need 2 consecutive failing windows = 20s of stopping → auto-saves
   static const int _maxWalkMinutes   = 1;   // force auto-save after 5 min
+  /// hard cap: auto-saves after 1 minute regardless
 
-  // for real production
+  ///step guide or not i also confuse
+  /// 0s          — start walking
+  /// 10s         — window 1 passes, confirmCount = 1
+  /// 20s         — window 2 passes, confirmCount = 2 → BANNER APPEARS
+  /// ...
+  /// stop walking
+  /// 10s of stop — window 1 fails, idleCount = 1
+  /// 20s of stop — window 2 fails, idleCount = 2 → AUTO-SAVES TO TODAY'S LOG
+
+  /// Or if you keep walking:
+ /// 60s of walking → _maxWalkMinutes = 1 → AUTO-SAVES TO TODAY'S LOG
+
+
+
+  /// for real production
   // static const int _cadenceThreshold = 8;
   // static const int _confirmWindows   = 3;   // ~30s to confirm
   // static const int _idleWindows      = 10;  // ~100s before auto-save
