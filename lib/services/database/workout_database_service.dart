@@ -34,11 +34,13 @@ class WorkoutDatabaseService {
         id TEXT PRIMARY KEY,
         userId INTEGER NOT NULL,
         name TEXT NOT NULL,
+        goal TEXT,
         description TEXT,
         exerciseCount INTEGER,
         durationMinutes INTEGER,
         difficulty TEXT,
-        color TEXT
+        color TEXT,
+        imageUrl TEXT
       )
     ''');
 

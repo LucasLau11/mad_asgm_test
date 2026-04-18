@@ -40,7 +40,7 @@ class AngleSmoothing {
 }
 
 // ─── Exercise type enum ────────────────────────────────────────────────────────
-enum ExerciseType { squat, pushUp, sitUp, unknown }
+enum ExerciseType { squat, pushUp, jumpingJack, unknown }
 
 class WorkoutTrackingPage extends StatefulWidget {
   final List<Exercise> exercises;
@@ -109,7 +109,7 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     final lower = name.toLowerCase();
     if (lower.contains('squat'))    return ExerciseType.squat;
     if (lower.contains('push'))     return ExerciseType.pushUp;
-    if (lower.contains('sit'))    return ExerciseType.sitUp;
+    if (lower.contains('jumping'))    return ExerciseType.jumpingJack;
     return ExerciseType.unknown;
   }
 
@@ -245,8 +245,8 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
       case ExerciseType.pushUp:
         _detectPushUpRep(pose);
         break;
-      case ExerciseType.sitUp:
-        _detectSitUpRep(pose);
+      case ExerciseType.jumpingJack:
+        _detectJumpingJackRep(pose);
         break;
       case ExerciseType.unknown:
         _updateFeedback('Use manual count for this exercise', Colors.orange);
@@ -431,66 +431,55 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
       midFeedback:   'Lunge deeper...',
     );
   }*/
-  void _detectSitUpRep(Pose pose) {
-    final nose = pose.landmarks[PoseLandmarkType.nose];
+
+  void _detectJumpingJackRep(Pose pose) {
+    final lWrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rWrist = pose.landmarks[PoseLandmarkType.rightWrist];
+    final lAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
     final lShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
     final rShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final lHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final rHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final lAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
 
-    // We only strictly need shoulders to track the torso movement
-    if (lShoulder == null || rShoulder == null) {
-      _updateFeedback('Show your shoulders', Colors.orange);
+    // 1. Visibility Check
+    if (lWrist == null || rWrist == null || lAnkle == null || rAnkle == null ||
+        lShoulder == null || rShoulder == null) {
+      _updateFeedback('Show your full body clearly', Colors.orange);
       return;
     }
 
+    // 2. Calculate horizontal distances
     double shoulderWidth = (lShoulder.x - rShoulder.x).abs();
+    double wristDist = (lWrist.x - rWrist.x).abs();
+    double ankleDist = (lAnkle.x - rAnkle.x).abs();
+
+    // 3. Jumping Jack Logic:
+    double legRatio = ankleDist / (shoulderWidth > 0 ? shoulderWidth : 1);
+
+    // Track vertical wrist position relative to shoulders
+    bool wristsAboveHead = lWrist.y < lShoulder.y && rWrist.y < rShoulder.y;
+
     double trackingValue;
-
-    // --- FRONTAL LOGIC WITH FALLBACK ---
-    // If nose is missing or very close to the top edge, we assume the user is lying FLAT
-    if (nose == null || (nose.likelihood ?? 0) < 0.3) {
-      // Treat as "Lying Flat" (Large Angle)
-      trackingValue = 160;
+    if (wristsAboveHead && legRatio > 1.2) {
+      // Top of Jumping Jack (Up position)
+      trackingValue = 60; // Low value to hit the "downThreshold"
+    } else if (!wristsAboveHead && legRatio < 1.0) {
+      // Bottom of Jumping Jack (Down position)
+      trackingValue = 160; // High value to hit the "upThreshold"
     } else {
-      // If we have hips, use the nose-to-hip ratio
-      if (lHip != null && rHip != null) {
-        double avgHipY = (lHip.y + rHip.y) / 2;
-        double verticalDist = (avgHipY - nose.y).abs();
-        double ratio = verticalDist / (shoulderWidth > 0 ? shoulderWidth : 1);
-        trackingValue = 180 - (ratio * 65);
-      } else {
-        // Fallback: If no hips, track how high the nose is above the shoulders
-        double avgShoulderY = (lShoulder.y + rShoulder.y) / 2;
-        double verticalDist = (avgShoulderY - nose.y).abs();
-        double ratio = verticalDist / (shoulderWidth > 0 ? shoulderWidth : 1);
-        // Nose far above shoulders = Sitting Up
-        trackingValue = 180 - (ratio * 120);
-      }
+      trackingValue = 110; // Mid-way
     }
 
-    // --- RELAXED STANDING CHECK ---
-    // Only check if you're standing if we can actually see your ankles/hips
-    if (lAnkle != null && lHip != null && (lAnkle.likelihood ?? 0) > 0.5) {
-      double hipToAnkleDist = (lAnkle.y - lHip.y).abs();
-      double torsoHeight = (lShoulder.y - lHip.y).abs();
-      if (hipToAnkleDist > torsoHeight * 1.8) {
-        _updateFeedback('Get down on the floor!', Colors.red);
-        return;
-      }
-    }
-
-    final smoothedValue = _hipSmoothing.smooth(trackingValue);
+    final smoothed = _lKneeSmoothing.smooth(trackingValue);
 
     _processRepCycle(
-      smoothedValue,
-      downThreshold: 85, // Sitting Up
-      upThreshold: 140,  // Lying Flat
-      downFeedback: 'Great! Now lie back',
-      midFeedback: 'Sit up higher',
+      smoothed,
+      downThreshold: 80,   // Triggers "Good job" at the top
+      upThreshold: 140,    // Triggers rep count when returning to bottom
+      downFeedback: 'Arms up! Feet out!',
+      midFeedback: 'Jump wider!',
     );
   }
+
 
   void _processRepCycle(
       double smoothedAngle, {

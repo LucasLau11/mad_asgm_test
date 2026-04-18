@@ -94,20 +94,34 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
       backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Column(
+          // This line is the key: it aligns all children to the left
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-
-            ),
+            // This acts as your top spacing/header area
+            const SizedBox(height: 20),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Workout Program', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  const SizedBox(height: 8),
-                  Text(_getFormattedDate(), style: const TextStyle(fontSize: 16, color: Colors.black54)),
+                  const Text(
+                      'Workout Program',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87
+                      )
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                      _getFormattedDate(),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+
+                      )
+                  ),
                 ],
               ),
             ),
