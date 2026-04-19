@@ -88,9 +88,6 @@ class _AnalyticsPersonalSettingsViewState
                 _toggleCard('GPS Tracking', appState.gpsTracking, cardColor,
                     textColor, (v) => appState.setGpsTracking(v)),
                 const SizedBox(height: 12),
-                _toggleCard('Heart Rate Alert', appState.heartRateAlert,
-                    cardColor, textColor, (v) => appState.setHeartRateAlert(v)),
-                const SizedBox(height: 12),
                 _toggleCard(
                     'Auto-Detect Workout',
                     appState.autoDetectWorkout,

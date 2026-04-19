@@ -18,7 +18,7 @@ class AnalyticsAppState extends ChangeNotifier {
   static const _keyWorkoutReminder = 'analytics_workoutReminder';
   static const _keyMeasurementUnit = 'analytics_measurementUnit';
   static const _keyGpsTracking     = 'analytics_gpsTracking';
-  static const _keyHeartRateAlert  = 'analytics_heartRateAlert';
+
   static const _keyAutoDetect      = 'analytics_autoDetectWorkout';
   static const _keyWeight          = 'analytics_weight';
   static const _keyHeight          = 'analytics_height';
@@ -143,14 +143,6 @@ class AnalyticsAppState extends ChangeNotifier {
     _prefs?.setBool(_userKey(_keyGpsTracking), value);
   }
 
-  bool _heartRateAlert = true;
-  bool get heartRateAlert => _heartRateAlert;
-  void setHeartRateAlert(bool value) {
-    _heartRateAlert = value;
-    notifyListeners();
-    _prefs?.setBool(_userKey(_keyHeartRateAlert), value);
-  }
-
   bool _autoDetectWorkout = true;
   bool get autoDetectWorkout => _autoDetectWorkout;
   void setAutoDetectWorkout(bool value) {
@@ -242,7 +234,6 @@ class AnalyticsAppState extends ChangeNotifier {
     _workoutReminder   = _prefs?.getBool(_userKey(_keyWorkoutReminder))   ?? true;
     _measurementUnit   = _prefs?.getString(_userKey(_keyMeasurementUnit)) ?? 'Metric';
     _gpsTracking       = _prefs?.getBool(_userKey(_keyGpsTracking))       ?? true;
-    _heartRateAlert    = _prefs?.getBool(_userKey(_keyHeartRateAlert))    ?? true;
     _autoDetectWorkout = _prefs?.getBool(_userKey(_keyAutoDetect))        ?? true;
     _gender            = _prefs?.getString(_userKey(_keyGender))          ?? 'Male';
 
@@ -280,7 +271,6 @@ class AnalyticsAppState extends ChangeNotifier {
     _workoutReminder   = true;
     _measurementUnit   = 'Metric';
     _gpsTracking       = true;
-    _heartRateAlert    = true;
     _autoDetectWorkout = true;
     _weight            = '75 kg';
     _height            = '170 cm';
