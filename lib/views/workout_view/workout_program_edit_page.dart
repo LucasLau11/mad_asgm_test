@@ -525,17 +525,63 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
     return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: TextStyle(fontSize: 14, color: Colors.grey[600])));
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hintText, TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4) , borderRadius: BorderRadius.circular(12)),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(hintText: hintText, border: InputBorder.none, hintStyle: TextStyle(color: Colors.grey[500])),
-        style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      // High-contrast text color for both modes
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+      // Improved validator with trim() to prevent empty spaces
+      validator: (value) => (value == null || value.trim().isEmpty) ? 'This field is required' : null,
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6),
+        ),
+        filled: true,
+        // Uses the same background color logic you had before
+        fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+
+        // Normal state border
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.transparent),
+        ),
+
+        // When user is typing
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+        ),
+
+        // RED border when validation fails (fixes your issue)
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+
+        // RED border when validation fails and user is still typing
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+
+        // Style for the "Required" text below the box
+        errorStyle: const TextStyle(
+          color: Colors.redAccent,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

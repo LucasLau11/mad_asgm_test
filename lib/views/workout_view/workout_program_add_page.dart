@@ -6,6 +6,7 @@ import '../../controllers/workout_controller.dart';
 import '../../services/database/heart_rate_database_service.dart';
 import '../../models/workout_model/workout_model.dart';
 import '../../models/workout_model/workout_exercise_model.dart';
+import 'dart:math';
 
 class AddWorkoutProgramPage extends StatefulWidget {
   const AddWorkoutProgramPage({Key? key}) : super(key: key);
@@ -46,6 +47,17 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
     'Jumping Jack': '1. Stand upright with your feet together and arms at your sides.\n2. Jump while spreading your legs shoulder-width apart and raising your arms overhead.\n3. Quickly reverse the movement by jumping back to the starting position.\n4. Repeat in a steady rhythm while keeping your core engaged.',
     'Push-ups': '1. Start in a plank position.\n2. Lower your body until your chest nearly touches the floor.\n3. Keep your core tight and back flat.\n4. Push back up to the starting position.',
   };
+  final List<String> _safeColors = [
+    '0xFFDAD9FF', // Soft Lavender
+    '0xFFFFD8D8', // Soft Rose
+    '0xFFD4FF6E', // Lime Green
+    '0xFFFFE5A0', // Muted Yellow
+    '0xFFB2EBF2', // Light Cyan
+    '0xFFC8E6C9', // Pale Green
+    '0xFFF8BBD0', // Pastel Pink
+    '0xFFE1BEE7', // Light Purple
+    '0xFFFFCCBC', // Peach
+  ];
   List<ExerciseForm> _exercises = [];
 
   @override
@@ -120,27 +132,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
     );
   }
 
-  void _syncDifficultyFromExercises() {
-    if (_exercises.isEmpty) return;
 
-    // Calculate average sets
-    double avgSets = _exercises.fold(0, (sum, ex) => sum + ex.sets) / _exercises.length;
-
-    String newDifficulty;
-    if (avgSets <= 2.2) {
-      newDifficulty = 'Beginner';
-    } else if (avgSets <= 3.2) {
-      newDifficulty = 'Intermediate';
-    } else {
-      newDifficulty = 'Advanced';
-    }
-
-    if (_selectedDifficulty != newDifficulty) {
-      setState(() {
-        _selectedDifficulty = newDifficulty;
-      });
-    }
-  }
   void _syncMetadata() {
     if (_exercises.isEmpty) return;
 
@@ -281,6 +273,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
       try {
         final workoutId = _uuid.v4();
         final currentUserId = DatabaseService.currentUserId;
+        final String randomColor = _safeColors[Random().nextInt(_safeColors.length)];
 
         final workout = Workout(
           id: workoutId,
@@ -291,7 +284,7 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
           exerciseCount: _exercises.length,
           durationMinutes: int.tryParse(_durationController.text) ?? 30,
           difficulty: _selectedDifficulty,
-          color: '0xFFDAD9FF',
+          color: randomColor,
           imageUrl: _previewImagePath ?? '',
         );
 
@@ -514,17 +507,63 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
     return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9))));
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hintText, TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(hintText: hintText, border: InputBorder.none, hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7))),
-        style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+      // This is the logic that prevents the "Empty" save
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'This field is required';
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+        ),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+        // Normal border
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.transparent),
+        ),
+
+        // Border when you are typing
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+        ),
+
+        // Border when validation fails (THIS FIXES YOUR ISSUE)
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+
+        // Style for the "Required" text below the box
+        errorStyle: const TextStyle(
+          color: Colors.redAccent,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
