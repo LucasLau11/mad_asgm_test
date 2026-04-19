@@ -345,7 +345,6 @@ class AnalyticsController {
   // ══════════════════════════════════════════════════════════════════════════
   static const Set<String> _cardioGoalTypes = {
     'Cal Burned', 'Steps Walked', 'Km Ran', 'Miles Ran',
-    'Weight Lost (kg)', 'Weight Lost (lbs)',
   };
 
   double _computeGoalBias(List<GoalModel> goals) {
@@ -424,8 +423,6 @@ class AnalyticsController {
           if (!isMetric) {
             delta = ((exercise.distanceKm ?? 0) * 0.621371).round();
           }
-          break;
-        default:
           break;
       }
 

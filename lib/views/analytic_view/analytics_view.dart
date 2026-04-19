@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/analytic_model/analytics_app_state.dart';
 import '../../models/analytic_model/analytics_goal_model.dart';
@@ -17,11 +18,16 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   String _selectedPeriod = 'Daily';
   final List<String> _periods = ['Daily', 'Weekly', 'Monthly'];
 
+
+  static const int _maxGoals = 3;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AnalyticsAppState>().refreshAnalytics();
+      final appState = context.read<AnalyticsAppState>();
+      appState.refreshAnalytics();
+      _checkDeadlineWarnings(appState.goals);
     });
   }
 
@@ -30,6 +36,45 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
+  void _checkDeadlineWarnings(List<GoalModel> goals) {
+    final now = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+
+    for (final goal in goals) {
+      DateTime? deadline;
+      try {
+        deadline = DateFormat('dd MMM yyyy').parse(goal.deadline);
+      } catch (_) {
+        continue;
+      }
+
+      final deadlineDay = DateTime(deadline.year, deadline.month, deadline.day);
+      final diff = deadlineDay.difference(now).inDays;
+
+      if (diff == 0 || diff == 1) {
+        final message = diff == 0
+            ? '"${goal.goalType}" goal is due today!'
+            : '"${goal.goalType}" goal is due tomorrow!';
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.orange.shade700,
+                duration: const Duration(seconds: 4),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -51,7 +96,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header — matches ExerciseListView style ──
+                // ── Header ──
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Row(
@@ -76,7 +121,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                           ],
                         ),
                       ),
-
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -95,55 +139,21 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                               icon: Icon(Icons.refresh, color: textColor),
                               onPressed: () => appState.refreshAnalytics(),
                               tooltip: 'Refresh data',
-                              padding: EdgeInsets.zero, // 🔥 remove default padding
+                              padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
-
                           const SizedBox(width: 12),
-
                           IconButton(
                             icon: Icon(Icons.person_outline, color: textColor),
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const AnalyticsProfileView()),
                             ),
-                            padding: EdgeInsets.zero, // 🔥 match refresh button
+                            padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
                         ],
-                      )
-
-
-                      // Refresh button
-                      // if (appState.analyticsLoading)
-                      //   Padding(
-                      //     padding: const EdgeInsets.only(top: 4, right: 8),
-                      //     child: SizedBox(
-                      //       width: 18,
-                      //       height: 18,
-                      //       child: CircularProgressIndicator(
-                      //         strokeWidth: 2,
-                      //         color: textColor,
-                      //       ),
-                      //     ),
-                      //   )
-                      // else
-                      //   IconButton(
-                      //     icon: Icon(Icons.refresh, color: textColor),
-                      //     onPressed: () => appState.refreshAnalytics(),
-                      //     tooltip: 'Refresh data',
-                      //     padding: const EdgeInsets.only(top: 0),
-                      //     constraints: const BoxConstraints(),
-                      //   ),
-                      // const SizedBox(width: 12),
-                      // // Profile icon
-                      // GestureDetector(
-                      //   onTap: () => Navigator.push(
-                      //     context,
-                      //     MaterialPageRoute(builder: (_) => const AnalyticsProfileView()),
-                      //   ),
-                      //   child: Icon(Icons.person_outline, color: textColor),
-                      // ),
+                      ),
                     ],
                   ),
                 ),
@@ -320,8 +330,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                             child: _goalCard(goal, cardColor, textColor, subtitleColor, appState),
                           )),
 
-                          // Add more goals
-                          _addGoalCard(cardColor, textColor),
+
+                          if (appState.goals.length < _maxGoals)
+                            _addGoalCard(cardColor, textColor),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -385,68 +396,128 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
   Widget _goalCard(GoalModel goal, Color cardColor, Color textColor,
       Color subtitleColor, AnalyticsAppState appState) {
-    final hasMismatch  = appState.displayGoalType(goal.goalType) != goal.goalType;
-    final displayType  = appState.displayGoalType(goal.goalType);
-    final targetInt    = int.tryParse(goal.target) ?? 1;
-    final progress     = (goal.progress / targetInt).clamp(0.0, 1.0);
+    final hasMismatch = appState.displayGoalType(goal.goalType) != goal.goalType;
+    final displayType = appState.displayGoalType(goal.goalType);
+    final targetInt   = int.tryParse(goal.target) ?? 1;
+    final progress    = (goal.progress / targetInt).clamp(0.0, 1.0);
+
+    DateTime? deadlineDate;
+    try {
+      deadlineDate = DateFormat('dd MMM yyyy').parse(goal.deadline);
+    } catch (_) {
+      deadlineDate = null;
+    }
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final isExpired = deadlineDate != null &&
+        DateTime(deadlineDate.year, deadlineDate.month, deadlineDate.day)
+            .isBefore(today);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(10),
         border: hasMismatch
             ? Border.all(color: Colors.orange.shade300, width: 1.5)
+            : isExpired
+            ? Border.all(color: Colors.red.shade300, width: 1.5)
             : null,
       ),
       child: Stack(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                '${goal.progress}/${goal.target} $displayType',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    backgroundColor: textColor.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      progress >= 1.0 ? Colors.green : const Color(0xFF5B4FCF),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 4),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${goal.progress}/${goal.target} $displayType',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    if (isExpired) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Expired',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: textColor.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isExpired
+                            ? Colors.grey
+                            : progress >= 1.0
+                            ? Colors.green
+                            : const Color(0xFF5B4FCF),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(goal.deadline, style: TextStyle(fontSize: 12, color: subtitleColor), textAlign: TextAlign.center),
-              if (goal.reason.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  goal.reason,
-                  style: TextStyle(
-                      fontSize: 12, color: subtitleColor, fontStyle: FontStyle.italic),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              if (hasMismatch) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Goal was set in a different unit system. Tap edit to update it.',
-                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700, height: 1.4),
+                  goal.deadline,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isExpired ? Colors.red.shade400 : subtitleColor,
+                  ),
                   textAlign: TextAlign.center,
                 ),
+
+
+                if (goal.reason.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    goal.reason,
+                    style: TextStyle(
+                        fontSize: 12, color: subtitleColor, fontStyle: FontStyle.italic),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+
+                if (hasMismatch) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Goal was set in a different unit system. Tap edit to update it.',
+                    style: TextStyle(fontSize: 11, color: Colors.orange.shade700, height: 1.4),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 40),
               ],
-              const SizedBox(height: 40),
-            ],
+            ),
           ),
 
           // Edit button

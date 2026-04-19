@@ -105,11 +105,12 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     Provider.of<PedometerController>(context, listen: false);
     final locationController =
     Provider.of<LocationController>(context, listen: false);
+    final appState =
+    Provider.of<AnalyticsAppState>(context, listen: false);
 
     await _notificationService.initialize();
 
     final pedometerInit = await pedometerController.initialize();
-    final locationInit = await locationController.initialize();
 
     if (!pedometerInit && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,16 +121,21 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
       );
     }
 
-    if (!locationInit && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location not available. GPS tracking disabled.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
 
-    await locationController.getCurrentLocation();
+    if (appState.gpsTracking) {
+      final locationInit = await locationController.initialize();
+
+      if (!locationInit && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location not available. GPS tracking disabled.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      await locationController.getCurrentLocation();
+    }
   }
 
   void _startWorkout() async {
@@ -137,6 +143,8 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     Provider.of<PedometerController>(context, listen: false);
     final locationController =
     Provider.of<LocationController>(context, listen: false);
+    final appState =
+    Provider.of<AnalyticsAppState>(context, listen: false);
 
     // ── Snapshot the current hardware step count BEFORE startTracking() ──────
     // resetSession() anchors _sessionStartSteps = _totalSteps.
@@ -159,10 +167,12 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
     await WakelockPlus.enable();
 
-    locationController.resetRoute();
-
     await pedometerController.startTracking();
-    await locationController.startTracking();
+
+    if (appState.gpsTracking) {
+      locationController.resetRoute();
+      await locationController.startTracking();
+    }
 
     // Capture the baseline AFTER startTracking() subscribes, so _totalSteps
     // is fully up-to-date from the hardware sensor.

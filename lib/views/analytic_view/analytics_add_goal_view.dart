@@ -24,28 +24,20 @@ class _AddGoalViewState extends State<AddGoalView> {
     'Cal Burned',
     'Steps Walked',
     _appState.isMetric ? 'Km Ran' : 'Miles Ran',
-    'Workouts Completed',
-    _appState.isMetric ? 'Weight Lost (kg)' : 'Weight Lost (lbs)',
   ];
 
   Map<String, List<String>> get _targetsByGoal => {
-    'Cal Burned':         ['200', '500', '750', '1000', '1500', '2000', '3000', '5000'],
-    'Steps Walked':       ['1000', '3000', '5000', '8000', '10000', '15000'],
-    'Km Ran':             ['1', '3', '5', '10', '15', '21'],
-    'Miles Ran':          ['1', '2', '3', '6', '10', '13'],
-    'Workouts Completed': ['3', '5', '10', '15', '20', '30'],
-    'Weight Lost (kg)':   ['1', '2', '3', '5', '7', '10'],
-    'Weight Lost (lbs)':  ['2', '5', '7', '10', '15', '22'],
+    'Cal Burned':   ['200', '500', '750', '1000', '1500', '2000', '3000', '5000'],
+    'Steps Walked': ['1000', '3000', '5000', '8000', '10000', '15000'],
+    'Km Ran':       ['1', '3', '5', '10', '15', '21'],
+    'Miles Ran':    ['1', '2', '3', '6', '10', '13'],
   };
 
   Map<String, String> get _unitByGoal => {
-    'Cal Burned':         'kcal',
-    'Steps Walked':       'steps',
-    'Km Ran':             'km',
-    'Miles Ran':          'miles',
-    'Workouts Completed': 'sessions',
-    'Weight Lost (kg)':   'kg',
-    'Weight Lost (lbs)':  'lbs',
+    'Cal Burned':   'kcal',
+    'Steps Walked': 'steps',
+    'Km Ran':       'km',
+    'Miles Ran':    'miles',
   };
 
   bool get _isEditing => widget.existingGoal != null;
@@ -59,14 +51,8 @@ class _AddGoalViewState extends State<AddGoalView> {
       final g = widget.existingGoal!;
       String resolvedGoalType = g.goalType;
 
-      const metricToImperial = {
-        'Km Ran': 'Miles Ran',
-        'Weight Lost (kg)': 'Weight Lost (lbs)',
-      };
-      const imperialToMetric = {
-        'Miles Ran': 'Km Ran',
-        'Weight Lost (lbs)': 'Weight Lost (kg)',
-      };
+      const metricToImperial = {'Km Ran': 'Miles Ran'};
+      const imperialToMetric = {'Miles Ran': 'Km Ran'};
 
       final appState = context.read<AnalyticsAppState>();
       if (appState.isMetric && imperialToMetric.containsKey(g.goalType)) {
@@ -102,7 +88,9 @@ class _AddGoalViewState extends State<AddGoalView> {
     final appState = context.read<AnalyticsAppState>();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDeadline ?? DateTime.now().add(const Duration(days: 7)),
+      initialDate: _selectedDeadline != null && _selectedDeadline!.isAfter(DateTime.now())
+          ? _selectedDeadline!
+          : DateTime.now().add(const Duration(days: 7)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
       builder: (context, child) {
@@ -123,10 +111,31 @@ class _AddGoalViewState extends State<AddGoalView> {
   }
 
   bool get _canSave =>
-      _selectedGoal != null && _selectedTarget != null && _selectedDeadline != null;
+      _selectedGoal != null &&
+          _selectedTarget != null &&
+          _selectedDeadline != null &&
+          !_selectedDeadline!.isBefore(DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+          ));
 
   void _save() {
     final appState = context.read<AnalyticsAppState>();
+
+    if (!_isEditing) {
+      final duplicate = appState.goals.any((g) => g.goalType == _selectedGoal);
+      if (duplicate) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You already have a goal of this type.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
     final goal = GoalModel(
       id: _isEditing
           ? widget.existingGoal!.id
@@ -218,6 +227,7 @@ class _AddGoalViewState extends State<AddGoalView> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -226,12 +236,14 @@ class _AddGoalViewState extends State<AddGoalView> {
                       controller: _reasonController,
                       style: TextStyle(fontSize: 15, color: textColor),
                       maxLines: 2,
+                      maxLength: 100,
                       decoration: InputDecoration(
                         hintText: 'Why this goal? (optional)',
                         hintStyle: TextStyle(fontSize: 15, color: subtitleColor),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
+                        counterText: '',
                       ),
                     ),
                   ),

@@ -15,8 +15,8 @@ class _AnalyticsPersonalSettingsViewState
     extends State<AnalyticsPersonalSettingsView> {
   final List<String> _genderOptions = const ['Male', 'Female', 'Other'];
 
-  // Weight pulled from the Weight table
-  String? _dbWeight;      // e.g. "72.5 kg" — null while loading
+
+  double? _rawWeightKg;
   bool _weightLoading = true;
 
   @override
@@ -31,22 +31,20 @@ class _AnalyticsPersonalSettingsViewState
       if (!mounted) return;
       if (records.isEmpty) {
         setState(() {
-          _dbWeight = null;
+          _rawWeightKg = null;
           _weightLoading = false;
         });
       } else {
-        // getWeightRecords() returns records ordered by createdOn DESC,
-        // so the first entry is the most recent.
-        final latest = records.first;
+
         setState(() {
-          _dbWeight = '${latest.weightKg} kg';
+          _rawWeightKg = records.first.weightKg.toDouble();
           _weightLoading = false;
         });
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _dbWeight = null;
+        _rawWeightKg = null;
         _weightLoading = false;
       });
     }
@@ -65,6 +63,14 @@ class _AnalyticsPersonalSettingsViewState
         final currentHeight = heightOptions.contains(appState.height)
             ? appState.height
             : appState.defaultHeight;
+
+
+        String? displayWeight;
+        if (_rawWeightKg != null) {
+          displayWeight = appState.isMetric
+              ? '${_rawWeightKg!.toStringAsFixed(1)} kg'
+              : '${(_rawWeightKg! * 2.20462).toStringAsFixed(1)} lbs';
+        }
 
         return Scaffold(
           backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
@@ -116,8 +122,7 @@ class _AnalyticsPersonalSettingsViewState
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child:
-                          const Text('Change', style: TextStyle(fontSize: 13)),
+                          child: const Text('Change', style: TextStyle(fontSize: 13)),
                         ),
                       ],
                     ),
@@ -125,7 +130,6 @@ class _AnalyticsPersonalSettingsViewState
                 ),
                 const SizedBox(height: 12),
 
-                // ── Weight — read-only, sourced from DB ──────────────────────
                 _card(
                   cardColor: cardColor,
                   child: Padding(
@@ -134,20 +138,18 @@ class _AnalyticsPersonalSettingsViewState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Weight',
-                            style:
-                            TextStyle(fontSize: 15, color: textColor)),
+                            style: TextStyle(fontSize: 15, color: textColor)),
                         _weightLoading
                             ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                             : Text(
-                          _dbWeight ?? 'No data',
+                          displayWeight ?? 'No data',
                           style: TextStyle(
                             fontSize: 14,
-                            color: _dbWeight != null
+                            color: displayWeight != null
                                 ? textColor
                                 : Colors.grey,
                           ),
@@ -156,7 +158,6 @@ class _AnalyticsPersonalSettingsViewState
                     ),
                   ),
                 ),
-                // ─────────────────────────────────────────────────────────────
 
                 const SizedBox(height: 12),
                 _dropdownCard(

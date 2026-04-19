@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:io';
 import '../../models/workout_model/workout_exercise_model.dart';
+import '../../models/analytic_model/analytics_app_state.dart';
 import '../../widgets/pose_painter.dart';
 import '../../services/database/heart_rate_database_service.dart';
 import '../../services/database/workout_database_service.dart';
@@ -126,7 +128,14 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
         model: PoseDetectionModel.accurate,
       ),
     );
-    _initializeCamera();
+
+    final appState = context.read<AnalyticsAppState>();
+    if (appState.autoDetectWorkout) {
+      _initializeCamera();
+    } else {
+      // Camera stays null — build() renders a plain background instead.
+      _feedbackMessage = 'Tap to count manually';
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -689,13 +698,15 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: _cameraController == null ||
-            !_cameraController!.value.isInitialized
+        child: _cameraController != null && !_cameraController!.value.isInitialized
             ? const Center(
             child: CircularProgressIndicator(color: Colors.white))
             : Stack(
           children: [
-            Positioned.fill(child: CameraPreview(_cameraController!)),
+            if (_cameraController != null && _cameraController!.value.isInitialized)
+              Positioned.fill(child: CameraPreview(_cameraController!))
+            else
+              const Positioned.fill(child: ColoredBox(color: Colors.black)),
 
             // Pose overlay
             if (_poses != null &&
@@ -998,31 +1009,31 @@ class _WorkoutTrackingPageState extends State<WorkoutTrackingPage> {
                 ),
               ),
 
-              // Start Set button
-              Positioned(
-                bottom: 80,
-                left: 40,
-                right: 40,
-                child: ElevatedButton(
-                  onPressed:
-                  _isDetectionActive ? null : _startDetection,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isDetectionActive
-                        ? Colors.grey
-                        : const Color(0xFFDAD9FF),
-                    foregroundColor: Colors.black87,
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: Text(
-                    _isDetectionActive ? 'Detecting...' : 'Start Set',
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+              if (context.read<AnalyticsAppState>().autoDetectWorkout)
+                Positioned(
+                  bottom: 80,
+                  left: 40,
+                  right: 40,
+                  child: ElevatedButton(
+                    onPressed:
+                    _isDetectionActive ? null : _startDetection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isDetectionActive
+                          ? Colors.grey
+                          : const Color(0xFFDAD9FF),
+                      foregroundColor: Colors.black87,
+                      padding:
+                      const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text(
+                      _isDetectionActive ? 'Detecting...' : 'Start Set',
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-              ),
 
               // Manual count button
               Positioned(

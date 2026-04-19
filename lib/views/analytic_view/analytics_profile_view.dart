@@ -81,6 +81,7 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
     if (confirmed == true && mounted) {
       await _controller.logout();
       DatabaseService().logoutUser();
+      if (mounted) context.read<AnalyticsAppState>().onUserLoggedOut();
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -156,7 +157,6 @@ class _AnalyticsProfileViewState extends State<AnalyticsProfileView> {
                 MaterialPageRoute(builder: (_) => const AnalyticsHelpView()));
           }),
           const SizedBox(height: 12),
-          // Logout button — triggers confirmation dialog
           _menuButton('Logout', isDark, onTap: () => _confirmLogout(isDark)),
         ],
       ),

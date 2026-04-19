@@ -1,4 +1,3 @@
-// Renamed from user_model2.dart to avoid conflict with the project's user_model.dart
 class AnalyticsProfileModel {
   final String email;
   final String? profileImageUrl;

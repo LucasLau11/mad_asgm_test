@@ -82,7 +82,10 @@ class AnalyticsAppState extends ChangeNotifier {
   String get measurementUnit => _measurementUnit;
   bool get isMetric => _measurementUnit == 'Metric';
 
+  // Fix #4: Guard against no-op changes so weight/height are not reset
+  // unnecessarily when the user selects the same unit that is already active.
   void setMeasurementUnit(String value) {
+    if (value == _measurementUnit) return;
     _measurementUnit = value;
     _weight = defaultWeight;
     _height = defaultHeight;
@@ -206,6 +209,9 @@ class AnalyticsAppState extends ChangeNotifier {
   }
 
   void _saveGoals() {
+    // Note: _prefs may be null if called before loadFromStorage() completes.
+    // The ?. operator silently skips the save in that case — this is safe
+    // because onUserLoggedIn() will load goals fresh from prefs on next login.
     final encoded = jsonEncode(_goals.map((g) => g.toJson()).toList());
     _prefs?.setString(_userKey(_keyGoals), encoded);
   }
