@@ -81,6 +81,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if (!mounted) return;
 
+    /// switch the statement sequence before the snackbar
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Account created! Welcome, ${user.username}'),
@@ -91,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
 
     //Success
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override

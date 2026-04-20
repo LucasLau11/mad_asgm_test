@@ -12,6 +12,7 @@ import '../../controllers/location_controller.dart';
 import '../../models/exercise_model/exercise_model.dart';
 import '../../models/analytic_model/analytics_app_state.dart';
 import '../../services/exercise_notification_service.dart';
+import '../analytic_view/analytics_personal_settings_view.dart'; // ← NEW IMPORT
 
 
 class LiveExerciseView extends StatefulWidget {
@@ -36,6 +37,9 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
 
   // Workout state
   bool _isTracking = false;
+
+  // ← NEW: tracks whether GPS is disabled in settings
+  bool _gpsDisabled = false;
 
   // Wall-clock based timing
   DateTime? _startTime;
@@ -100,6 +104,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     });
   }
 
+  // ── UPDATED: checks GPS setting first and shows prompt if disabled ────────
   Future<void> _initializeTracking() async {
     final pedometerController =
     Provider.of<PedometerController>(context, listen: false);
@@ -121,22 +126,79 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
       );
     }
 
-
-    if (appState.gpsTracking) {
-      final locationInit = await locationController.initialize();
-
-      if (!locationInit && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location not available. GPS tracking disabled.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-
-      await locationController.getCurrentLocation();
+    // ── GPS disabled check ──────────────────────────────────────────────────
+    if (!appState.gpsTracking) {
+      setState(() => _gpsDisabled = true);
+      // Show the dialog after the first frame so the widget tree is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showGpsDisabledDialog();
+      });
+      return; // skip all location initialisation
     }
+    // ───────────────────────────────────────────────────────────────────────
+
+    final locationInit = await locationController.initialize();
+
+    if (!locationInit && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location not available. GPS tracking disabled.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+
+    await locationController.getCurrentLocation();
   }
+
+  // ── NEW: dialog shown when GPS is off in settings ─────────────────────────
+  void _showGpsDisabledDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.gps_off, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('GPS Tracking Disabled'),
+          ],
+        ),
+        content: const Text(
+          'GPS tracking is currently turned off in your settings.\n\n'
+              'Distance and map tracking will not be available during this workout.\n\n'
+              'Would you like to go to Settings to enable it?',
+        ),
+        actions: [
+          // Stay on this screen — steps-only workout
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Continue Without GPS'),
+          ),
+          // Deep-link straight to Personal Settings
+          ElevatedButton.icon(
+            icon: const Icon(Icons.settings, size: 18),
+            label: const Text('Go to Settings'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C6FDC),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);   // close dialog
+              Navigator.pop(context); // leave live-exercise screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AnalyticsPersonalSettingsView(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   void _startWorkout() async {
     final pedometerController =
@@ -324,9 +386,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     );
   }
 
-  // FIX 1: Cancel the timer and mark _isTracking = false IMMEDIATELY at the
-  // top of this method — before any awaits — so the 1-second periodic tick
-  // cannot fire setState again and keep the counter running / UI alive.
   void _stopWorkout(String title) async {
     _timer?.cancel();
     _timer = null;
@@ -374,7 +433,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
-      // Pop the live-exercise screen to return to the exercise list.
       Navigator.pop(context);
     }
   }
@@ -590,23 +648,58 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                               ),
                             ],
                           )
+
+                          // ── UPDATED: GPS disabled vs loading state ──────
                               : Container(
-                            color: isDark ? const Color(0xFF1A1A2E) : Colors.blueGrey[100],
+                            color: isDark
+                                ? const Color(0xFF1A1A2E)
+                                : Colors.blueGrey[100],
                             child: Center(
                               child: Column(
                                 mainAxisAlignment:
                                 MainAxisAlignment.center,
                                 children: [
-                                  const CircularProgressIndicator(
-                                      color: Colors.blue),
+                                  Icon(
+                                    _gpsDisabled
+                                        ? Icons.gps_off
+                                        : Icons.gps_not_fixed,
+                                    size: 52,
+                                    color: _gpsDisabled
+                                        ? Colors.orange
+                                        : Colors.blue,
+                                  ),
                                   const SizedBox(height: 16),
-                                  Text('Getting your location...',
-                                      style: TextStyle(
-                                          color: isDark ? Colors.white70 : Colors.black54)),
+                                  Text(
+                                    _gpsDisabled
+                                        ? 'GPS tracking is disabled'
+                                        : 'Getting your location...',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                      fontWeight: _gpsDisabled
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (_gpsDisabled)
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.settings,
+                                          size: 16),
+                                      label: const Text(
+                                          'Enable in Settings'),
+                                      onPressed:
+                                      _showGpsDisabledDialog,
+                                    )
+                                  else
+                                    const CircularProgressIndicator(
+                                        color: Colors.blue),
                                 ],
                               ),
                             ),
                           ),
+                          // ───────────────────────────────────────────────
 
                           // Back button
                           Positioned(
@@ -719,10 +812,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // FIX 2: Only show elapsed time after the workout
-                            // has actually started (_startTime != null).
-                            // Before that, show "Ready to start" so the counter
-                            // does not appear to count up from 00:00 on its own.
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
