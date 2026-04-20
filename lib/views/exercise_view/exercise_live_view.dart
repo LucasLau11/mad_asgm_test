@@ -157,11 +157,15 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.gps_off, color: Colors.orange),
-            SizedBox(width: 10),
-            Text('GPS Tracking Disabled'),
+            const Icon(Icons.gps_off, color: Colors.orange),
+            const SizedBox(width: 10),
+            const Flexible(           // ← add this
+              child: Text('GPS Tracking Disabled'),
+            ),
           ],
         ),
         content: const Text(
