@@ -146,11 +146,6 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     final appState =
     Provider.of<AnalyticsAppState>(context, listen: false);
 
-    // ── Snapshot the current hardware step count BEFORE startTracking() ──────
-    // resetSession() anchors _sessionStartSteps = _totalSteps.
-    // Because _totalSteps is updated via the auto-detect stream (which is still
-    // subscribed), this captures the correct baseline and sessionSteps will
-    // read 0 at the start of the live session.
     pedometerController.resetSession();
 
     final now = DateTime.now();
@@ -174,10 +169,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
       await locationController.startTracking();
     }
 
-    // Capture the baseline AFTER startTracking() subscribes, so _totalSteps
-    // is fully up-to-date from the hardware sensor.
     _initialSteps = pedometerController.totalSteps;
-    // Re-anchor in case a step event fired between resetSession() and here.
     pedometerController.resetSession();
 
     if (mounted) {
@@ -332,8 +324,18 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
     );
   }
 
+  // FIX 1: Cancel the timer and mark _isTracking = false IMMEDIATELY at the
+  // top of this method — before any awaits — so the 1-second periodic tick
+  // cannot fire setState again and keep the counter running / UI alive.
   void _stopWorkout(String title) async {
     _timer?.cancel();
+    _timer = null;
+    if (mounted) {
+      setState(() {
+        _isTracking = false;
+      });
+    }
+
     await WakelockPlus.disable();
     await _notificationService.cancelProgressNotification();
 
@@ -372,6 +374,7 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
+      // Pop the live-exercise screen to return to the exercise list.
       Navigator.pop(context);
     }
   }
@@ -396,12 +399,13 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
               Provider.of<LocationController>(context, listen: false);
 
               _timer?.cancel();
+              _timer = null;
               WakelockPlus.disable();
               pedometerController.stopTracking();
               locationController.stopTracking();
 
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // close live view
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Exit'),
@@ -715,12 +719,17 @@ class _LiveExerciseViewState extends State<LiveExerciseView>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Timer + subtitle
+                            // FIX 2: Only show elapsed time after the workout
+                            // has actually started (_startTime != null).
+                            // Before that, show "Ready to start" so the counter
+                            // does not appear to count up from 00:00 on its own.
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  _formatDuration(_elapsedSeconds),
+                                  _startTime != null
+                                      ? _formatDuration(_elapsedSeconds)
+                                      : '00:00',
                                   style: TextStyle(
                                     fontSize: 40,
                                     fontWeight: FontWeight.bold,
