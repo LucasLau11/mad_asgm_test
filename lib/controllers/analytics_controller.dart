@@ -27,10 +27,6 @@ class WorkoutEntry {
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  AnalyticsController
-//
-//  All data is now loaded from the real databases.
-//  Call loadData() once (from AnalyticsAppState or initState) before using
-//  any getters or generateRecommendation().
 // ═════════════════════════════════════════════════════════════════════════════
 class AnalyticsController {
 
@@ -70,10 +66,6 @@ class AnalyticsController {
     final exercises = await DatabaseService().getAllExercises();
 
     // ── 2. Load strength/core workouts (completed workout sessions) ────────
-    // WorkoutDatabaseService stores workout definitions + their exercises.
-    // We treat each saved workout as a completed session logged on its
-    // creation date. We read all workouts and their exercises to infer
-    // muscle group and use the workout's durationMinutes for calories.
     final workoutHistoryData = await WorkoutDatabaseService().getHistoryByUserId(userId);
 
     final entries = <WorkoutEntry>[];

@@ -11,7 +11,6 @@ class AnalyticsProfileController {
   }
 
   Future<void> logout() async {
-    // Session is cleared by DatabaseService().logoutUser() in profile_view.
-    // Add any extra cleanup (tokens, caches) here if needed.
+
   }
 }

@@ -7,8 +7,7 @@ import '../exercise_model/exercise_model.dart';
 import '../../services/database/heart_rate_database_service.dart' as shared_db;
 
 class AnalyticsAppState extends ChangeNotifier {
-  // ── All SharedPreferences keys are namespaced by userId so that
-  //    settings for user A never bleed into user B on the same device. ──────
+
   String _userKey(String key) => 'u${_currentUserId}_$key';
 
   static const _keyDarkMode        = 'analytics_darkMode';
@@ -82,8 +81,7 @@ class AnalyticsAppState extends ChangeNotifier {
   String get measurementUnit => _measurementUnit;
   bool get isMetric => _measurementUnit == 'Metric';
 
-  // Fix #4: Guard against no-op changes so weight/height are not reset
-  // unnecessarily when the user selects the same unit that is already active.
+
   void setMeasurementUnit(String value) {
     if (value == _measurementUnit) return;
     _measurementUnit = value;
@@ -201,22 +199,13 @@ class AnalyticsAppState extends ChangeNotifier {
   }
 
   void _saveGoals() {
-    // Note: _prefs may be null if called before loadFromStorage() completes.
-    // The ?. operator silently skips the save in that case — this is safe
-    // because onUserLoggedIn() will load goals fresh from prefs on next login.
+
     final encoded = jsonEncode(_goals.map((g) => g.toJson()).toList());
     _prefs?.setString(_userKey(_keyGoals), encoded);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
   //  LOGIN HOOK
-  //
-  //  Call this in login_screen.dart and signup_screen.dart right after a
-  //  successful loginUser() / registerUser() call, before navigating away:
-  //
-  //    await context.read<AnalyticsAppState>().onUserLoggedIn();
-  //
-  //  Loads this user's saved prefs and seeds username/email from the DB.
   // ══════════════════════════════════════════════════════════════════════════
   Future<void> onUserLoggedIn() async {
     final dbUser = shared_db.DatabaseService.currentUser;
@@ -259,9 +248,6 @@ class AnalyticsAppState extends ChangeNotifier {
 
   // ══════════════════════════════════════════════════════════════════════════
   //  LOGOUT HOOK
-  //
-  //  Call this alongside DatabaseService().logoutUser() in profile_view.dart.
-  //  Wipes all in-memory state so the next user starts clean.
   // ══════════════════════════════════════════════════════════════════════════
   void onUserLoggedOut() {
     _username          = '';
@@ -313,9 +299,7 @@ class AnalyticsAppState extends ChangeNotifier {
     }
   }
 
-  // ── App-start bootstrap — called once from main() before any user logs in ─
-  // Only initialises SharedPreferences and pre-warms the TFLite model.
-  // User-specific data is loaded by onUserLoggedIn().
+
   SharedPreferences? _prefs;
 
   Future<void> loadFromStorage() async {
