@@ -260,19 +260,18 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
 
   Future<void> _saveWorkout() async {
     if (_formKey.currentState!.validate()) {
-      /*// Custom validation for exercises
-      for (var ex in _exercises) {
-        if (ex.imageUrls.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please add at least one image per exercise'), backgroundColor: Colors.red),
-          );
-          return;
-        }
-      }*/
-
       try {
         final workoutId = _uuid.v4();
         final currentUserId = DatabaseService.currentUserId;
+
+        if (currentUserId == 0) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: No active user session found')),
+          );
+          return;
+        }
+
         final String randomColor = _safeColors[Random().nextInt(_safeColors.length)];
 
         final workout = Workout(
@@ -300,18 +299,17 @@ class _AddWorkoutProgramPageState extends State<AddWorkoutProgramPage> {
 
         await _controller.addWorkout(workout, exerciseModels);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Workout program added successfully!'), backgroundColor: Colors.green),
-          );
-          Navigator.pop(context);
-        }
+        if (!mounted) return;
+        Navigator.pop(context, true);
+
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

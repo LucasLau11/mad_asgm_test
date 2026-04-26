@@ -60,7 +60,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
     _programNameController = TextEditingController(text: widget.workout.name);
     _durationController = TextEditingController(text: widget.workout.durationMinutes.toString());
-    _selectedGoal = 'Strength';
+    _selectedGoal = widget.workout.goal;
     _selectedDifficulty = widget.workout.difficulty;
     _previewImagePath = widget.workout.imageUrl;
     _loadExercises();
@@ -253,7 +253,7 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
           id: widget.workout.id,
           userId: widget.workout.userId,
           name: _programNameController.text,
-          goal:_selectedGoal,
+          goal: _selectedGoal,
           description: '${_exercises.length} exercises - ${_durationController.text} min',
           exerciseCount: _exercises.length,
           durationMinutes: int.tryParse(_durationController.text) ?? 30,
@@ -274,18 +274,18 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
 
         await _controller.updateWorkout(updatedWorkout, updatedExercises);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Workout updated successfully!'), backgroundColor: Colors.green),
-          );
-          Navigator.pop(context);
-        }
+        // Navigate back with success result BEFORE showing SnackBar
+        if (!mounted) return;
+        Navigator.pop(context, true); // Return true for success
+
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -297,17 +297,34 @@ class _EditWorkoutProgramPageState extends State<EditWorkoutProgramPage> {
         title: const Text('Delete Workout'),
         content: Text('Are you sure you want to delete "${widget.workout.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      await _controller.deleteWorkout(widget.workout.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Workout deleted'), backgroundColor: Colors.red));
-        Navigator.pop(context);
+      try {
+        await _controller.deleteWorkout(widget.workout.id);
+
+        // Navigate back with delete result BEFORE showing SnackBar
+        if (!mounted) return;
+        Navigator.pop(context, 'deleted'); // Return 'deleted' to indicate deletion
+
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
