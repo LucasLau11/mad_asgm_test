@@ -544,7 +544,7 @@ class _ExerciseListViewState extends State<ExerciseListView> {
                   color: Colors.white, size: 32),
               const SizedBox(width: 12),
               const Text(
-                'Start a Workout',
+                'Start an Activity',
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
