@@ -37,14 +37,14 @@ class _WorkoutProgramPageState extends State<WorkoutProgramPage> {
   Future<void> _loadWorkouts() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final currentUserId = DatabaseService.currentUserId;
       final workouts = await _controller.getWorkoutsByUserId(currentUserId);
-      
+
       if (mounted) {
         setState(() {
-          _allWorkouts = workouts;
+          _allWorkouts = workouts.reversed.toList();
           _filteredWorkouts = _allWorkouts;
           _isLoading = false;
         });
