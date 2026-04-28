@@ -255,6 +255,8 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   controller: _distanceController,
                   suffix: 'km',
                   isDecimal: true,
+                  maxValue: 100.0,   // max 100 km
+                  minValue: 0.1,     // min 0.1 km
                 );
               },
               textColor: textColor,
@@ -272,6 +274,8 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   title: 'Calories Burned',
                   controller: _caloriesController,
                   suffix: 'cal',
+                  maxValue: 1000,    // max 1000 cal
+                  minValue: 1,       // min 1 cal
                 );
               },
               textColor: textColor,
@@ -289,6 +293,8 @@ class _AddExerciseViewState extends State<AddExerciseView> {
                   title: 'Steps',
                   controller: _stepsController,
                   suffix: 'steps',
+                  maxValue: 10000,  // max 10,000 steps
+                  minValue: 1,       // min 1 step
                 );
               },
               textColor: textColor,
@@ -580,38 +586,94 @@ class _AddExerciseViewState extends State<AddExerciseView> {
     required TextEditingController controller,
     required String suffix,
     bool isDecimal = false,
+    double? maxValue,
+    double? minValue,
   }) {
     final tempController = TextEditingController(text: controller.text);
+    String? errorText;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: tempController,
-            keyboardType: TextInputType.numberWithOptions(decimal: isDecimal),
-            decoration: InputDecoration(
-              suffix: Text(suffix),
-              border: const OutlineInputBorder(),
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  controller.text = tempController.text;
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(title),
+              content: TextField(
+                controller: tempController,
+                keyboardType: TextInputType.numberWithOptions(decimal: isDecimal),
+                decoration: InputDecoration(
+                  suffix: Text(suffix),
+                  border: const OutlineInputBorder(),
+                  errorText: errorText,
+                ),
+                autofocus: true,
+                onChanged: (value) {
+                  setDialogState(() {
+                    errorText = null; // clear error on change
+                  });
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final input = tempController.text.trim();
+
+                    // Empty is allowed (clears the field)
+                    if (input.isEmpty) {
+                      setState(() => controller.text = '');
+                      Navigator.pop(context);
+                      return;
+                    }
+
+                    // Must be a valid number
+                    final parsed = isDecimal
+                        ? double.tryParse(input)
+                        : int.tryParse(input)?.toDouble();
+
+                    if (parsed == null) {
+                      setDialogState(() {
+                        errorText = 'Please enter a valid number';
+                      });
+                      return;
+                    }
+
+                    // Must not be negative or zero
+                    if (parsed <= 0) {
+                      setDialogState(() {
+                        errorText = 'Value must be greater than 0';
+                      });
+                      return;
+                    }
+
+                    // Max value check
+                    if (maxValue != null && parsed > maxValue) {
+                      setDialogState(() {
+                        errorText = 'Maximum allowed is $maxValue $suffix';
+                      });
+                      return;
+                    }
+
+                    // Min value check
+                    if (minValue != null && parsed < minValue) {
+                      setDialogState(() {
+                        errorText = 'Minimum allowed is $minValue $suffix';
+                      });
+                      return;
+                    }
+
+                    setState(() => controller.text = input);
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
